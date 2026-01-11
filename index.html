@@ -6,6 +6,7 @@
     <title>Login - Purple Auto Spa</title>
     
     <link rel="manifest" href="manifest.json">
+    
     <link rel="stylesheet" href="assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
@@ -82,6 +83,15 @@
         // --- 1. NEW AUTH CHECK (Auto Redirect) ---
         checkAlreadyLogin();
 
+        // --- 2. SERVICE WORKER REGISTRATION (ENABLED) ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker Registered!', reg.scope))
+                    .catch(err => console.log('Service Worker Fail:', err));
+            });
+        }
+
         async function handleLogin(e) {
             e.preventDefault();
             
@@ -89,30 +99,31 @@
             const password = document.getElementById('password').value;
             const btn = document.getElementById('loginBtn');
 
-            // 1. UI Loading State
+            // UI Loading State
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
             btn.disabled = true;
 
-            // 2. Call API
+            // Call API
             const response = await apiRequest('login', { mobile, password });
 
-            // 3. Handle Response
+            // Handle Response
             if (response.status === 'success') {
                 showToast("Login Successful!", "success");
                 
-                // --- SAFETY: Purani lines wapas daal di hain ---
+                // Save Data
                 localStorage.setItem('userName', response.user.name); 
-                localStorage.setItem('userRole', response.user.role); 
+                localStorage.setItem('userRole', response.user.role);
+                
+                // NEW: Save User ID (Zaroori hai My Space ke liye)
+                if(response.user.id) {
+                    localStorage.setItem('userId', response.user.id);
+                }
 
-                // --- FIX: Bas ye ek change zaroori hai "Added By" ke liye ---
                 setTimeout(() => {
-                    // Hum pura user object bhejenge taaki Auth.js use save kar sake
-                    handleLoginSuccess(response.user); 
-                }, 800);
-            }
-             else {
-                // Error handling
+                    handleLoginSuccess(response.user.role);
+                }, 1000);
+            } else {
                 showToast(response.message || "Login Failed", "error");
                 btn.innerHTML = originalText;
                 btn.disabled = false;
