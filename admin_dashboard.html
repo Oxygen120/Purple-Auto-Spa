@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Admin Dashboard - Purple Auto Spa</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-controls { display: flex; justify-content: flex-end; gap: 5px; margin-bottom: 10px; }
+        .chart-btn { background: #f4f6f8; border: 1px solid #ddd; padding: 4px 12px; border-radius: 20px; font-size: 11px; cursor: pointer; color: #555; transition: 0.3s; }
+        .chart-btn.active { background: #6A1B9A; color: white; border-color: #6A1B9A; }
+        .chart-wrapper { position: relative; height: 250px; width: 100%; }
+        .staff-action-btn { background: #333; color: white; width: 100%; padding: 15px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 25px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .staff-action-btn:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <img src="assets/logo.png" alt="Logo" class="header-logo">
+        <button class="logout-btn" onclick="confirmLogout()"><i class="fas fa-power-off"></i> Logout</button>
+    </div>
+
+    <div class="dashboard-container">
+        <div class="welcome-section">
+            <h2 class="welcome-text" id="welcomeMsg">Welcome, Admin</h2>
+            <p class="welcome-sub">Here is your business performance overview.</p>
+        </div>
+
+        <div class="form-card" style="padding: 15px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="font-size:14px; font-weight:700; color:#333;">Business Performance</h3>
+                <div class="chart-controls">
+                    <button class="chart-btn active" onclick="filterChart('daily')">Daily</button>
+                    <button class="chart-btn" onclick="filterChart('monthly')">Monthly</button>
+                </div>
+            </div>
+            <div class="chart-wrapper"><canvas id="pnlChart"></canvas></div>
+            <div style="display:flex; justify-content:space-around; margin-top:15px; border-top:1px solid #eee; padding-top:10px;">
+                <div style="text-align:center;"><small style="color:#777; font-size:10px;">INCOME</small><br><b style="color:var(--success); font-size:14px;" id="dispIncome">₹0</b></div>
+                <div style="text-align:center;"><small style="color:#777; font-size:10px;">EXPENSE</small><br><b style="color:var(--danger); font-size:14px;" id="dispExpense">₹0</b></div>
+                <div style="text-align:center;"><small style="color:#777; font-size:10px;">NET PROFIT</small><br><b style="color:var(--primary); font-size:14px;" id="dispProfit">₹0</b></div>
+            </div>
+        </div>
+
+        <button class="staff-action-btn" onclick="window.location.href='manage_staff.html'">
+            <i class="fas fa-users-cog"></i> Manage Staff & Attendance
+        </button>
+
+        <div class="tiles-grid">
+            <div class="tile tile-job" onclick="window.location.href='new_job.html'">
+                <i class="fas fa-plus-circle"></i><span>New Job</span>
+            </div>
+            <div class="tile tile-job" style="border-color:#1565c0;" onclick="window.location.href='active_jobs.html'">
+                <i class="fas fa-car" style="color:#1565c0;"></i><span>Active Jobs</span>
+            </div>
+            <div class="tile tile-book" onclick="window.location.href='bookings.html'">
+                <i class="fas fa-calendar-check"></i><span>Bookings</span>
+            </div>
+            <div class="tile tile-exp" onclick="window.location.href='expenses.html'">
+                <i class="fas fa-wallet"></i><span>Expenses</span>
+            </div>
+            <div class="tile tile-rep" onclick="window.location.href='reports.html'">
+                <i class="fas fa-chart-line"></i><span>Reports</span>
+            </div>
+        </div>
+
+        <div class="workshop-live">
+            <div class="live-header"><div class="live-dot"></div> WORKSHOP LIVE</div>
+            <div class="live-scroll-window">
+                <div class="live-scroll-content" id="tickerContent">
+                    <div class="live-item" style="justify-content:center;">Loading updates...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+    <script>
+        // Global variables (Same as before)
+        let chartInstance = null;
+        let allJobs = [];
+        let allExpenses = [];
+
+        window.onload = async function() {
+            // 1. UPDATED: Golden Name Logic
+            const savedName = localStorage.getItem('userName');
+            const welcomeEl = document.getElementById('welcomeMsg');
+
+            if (welcomeEl && savedName && savedName !== 'undefined') {
+                welcomeEl.innerHTML = `Welcome, <span style="color:#FFD700;">${savedName}</span>`; 
+            }
+
+            // 2. Security Check (Admin Only)
+            if(typeof checkAuth === 'function') {
+                checkAuth('Admin'); 
+            } else {
+                // Fallback agar function load na ho
+                const role = localStorage.getItem('userRole');
+                if(role !== 'Admin') window.location.replace('index.html');
+            }
+
+            // 3. Load Data (Same as before)
+            loadDashboard();
+            fetchChartData();
+        };
+
+        // --- BAAKI SAB KUCH SAME HAI (DO NOT TOUCH) ---
+
+        async function loadDashboard() {
+            const res = await apiRequest('getDashboard');
+            if(res.status === 'success') {
+                updateTicker(res.activeJobs, res.upcomingBookings);
+            }
+        }
+
+        async function fetchChartData() {
+            const [jobRes, expRes] = await Promise.all([apiRequest('getJobs'), apiRequest('getExpenses')]);
+            if(jobRes.status === 'success') allJobs = [...jobRes.active, ...jobRes.history];
+            if(expRes.status === 'success') allExpenses = expRes.expenses;
+            filterChart('daily');
+        }
+
+        function filterChart(mode) {
+            document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.chart-btn[onclick="filterChart('${mode}')"]`).classList.add('active');
+
+            let labels = [], incomeData = [], expenseData = [], totalInc = 0, totalExp = 0;
+            const today = new Date();
+
+            if (mode === 'daily') {
+                for(let i=6; i>=0; i--) {
+                    const d = new Date(); d.setDate(today.getDate() - i);
+                    const dateStr = d.toDateString();
+                    labels.push(d.toLocaleDateString('en-IN', {weekday:'short'}));
+                    const inc = allJobs.filter(j => new Date(j.Date).toDateString() === dateStr).reduce((sum, j) => sum + parseFloat(j.NetPayable || 0), 0);
+                    const exp = allExpenses.filter(e => new Date(e.date).toDateString() === dateStr).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                    incomeData.push(inc); expenseData.push(exp); totalInc += inc; totalExp += exp;
+                }
+            } else if (mode === 'monthly') {
+                for(let i=5; i>=0; i--) {
+                    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                    labels.push(d.toLocaleString('default', { month: 'short' }));
+                    const inc = allJobs.filter(j => { const jd = new Date(j.Date); return jd.getMonth() === d.getMonth() && jd.getFullYear() === d.getFullYear(); }).reduce((sum, j) => sum + parseFloat(j.NetPayable || 0), 0);
+                    const exp = allExpenses.filter(e => { const ed = new Date(e.date); return ed.getMonth() === d.getMonth() && ed.getFullYear() === d.getFullYear(); }).reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                    incomeData.push(inc); expenseData.push(exp); totalInc += inc; totalExp += exp;
+                }
+            }
+
+            document.getElementById('dispIncome').innerText = formatMoney(totalInc);
+            document.getElementById('dispExpense').innerText = formatMoney(totalExp);
+            document.getElementById('dispProfit').innerText = formatMoney(totalInc - totalExp);
+
+            const ctx = document.getElementById('pnlChart').getContext('2d');
+            if(chartInstance) chartInstance.destroy();
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ label: 'Income', data: incomeData, backgroundColor: '#6A1B9A', borderRadius: 4 }, { label: 'Expense', data: expenseData, backgroundColor: '#c0392b', borderRadius: 4 }] },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true, grid: { display:false } }, x: { grid: { display:false } } } }
+            });
+        }
+
+        // --- WORKSHOP LIVE TICKER ---
+function updateTicker(liveJobs, upcoming) {
+    const container = document.getElementById('tickerContent');
+    let html = '';
+
+    if (liveJobs.length === 0 && upcoming.length === 0) {
+        html = '<div class="live-item" style="justify-content:center;">No Active Jobs or Bookings</div>';
+    } else {
+        // 1. ACTIVE JOBS (Vehicle + Client Name)
+        liveJobs.forEach(j => {
+            html += `
+                <div class="live-item">
+                    <div>
+                        <span>🚗 <strong>${j.vehicle}</strong></span>
+                        <span style="font-size:11px; color:#777; margin-left:5px;">(${j.client || 'Client'})</span>
+                    </div>
+                    <span class="live-badge lb-wash">${j.status}</span>
+                </div>`;
+        });
+
+        // 2. BOOKINGS (Client + Date + Time)
+        upcoming.forEach(b => {
+            // Date Formatting (e.g., 12 Jan)
+            let dateStr = "";
+            try {
+                let d = new Date(b.date);
+                dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+            } catch(e) { dateStr = "Date"; }
+
+            html += `
+                <div class="live-item">
+                    <div>
+                        <span>📅 <strong>${b.client}</strong></span>
+                        <span style="font-size:11px; color:#777; margin-left:5px;">${dateStr}</span>
+                    </div>
+                    <span class="live-badge lb-book">${formatTime12(b.time)}</span>
+                </div>`;
+        });
+    }
+    
+    
+    container.innerHTML = html; 
+}
+
+
+        async function confirmLogout() {
+            const yes = await showConfirm("Logout?", "Are you sure?");
+            // Isme logout() call ho raha hai jo Auth.js me hai
+            if(yes) logout();
+        }
+    </script>
+</body>
+</html>
+

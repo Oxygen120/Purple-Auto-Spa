@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Invoice - Purple Auto Spa</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        /* =========================================
+           CRITICAL PRINT STYLES
+           ========================================= */
+        
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.98); z-index: 1000;
+            display: flex; justify-content: center; align-items: center; flex-direction: column;
+        }
+        #print-area-a4, #print-area-thermal { display: none; }
+
+        @media print {
+            @page { margin: 0; size: auto; }
+            body { margin: 0; padding: 0; background: white; color: black; font-family: sans-serif; }
+            
+            .header, .dashboard-container, .no-print, .fab-container, 
+            .modal-overlay, .custom-toast, #loadingScreen, #debugBox {
+                display: none !important;
+            }
+
+            /* --- A4 PRINT STYLES --- */
+            body.printing-a4 #print-area-a4 {
+                display: block !important;
+                width: 210mm; height: 100%;
+                padding: 10mm 15mm; margin: 0 auto;
+            }
+
+            .layout-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            .layout-table td { vertical-align: top; padding: 5px; }
+            
+            .print-logo { 
+                width: 160px !important; height: auto !important; 
+                display: block; 
+            }
+
+            .inv-header { font-size: 30px; font-weight: 900; color: #333; text-align: right; }
+            .gray-text { color: #444; font-size: 13px; line-height: 1.5; margin-top: 10px; }
+            
+            .info-box { background: #f9f9f9; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+            .lbl { font-size: 10px; font-weight: bold; color: #666; text-transform: uppercase; display: block; }
+            .val { font-size: 13px; font-weight: bold; color: #000; display: block; margin-top: 2px; }
+
+            /* Item Table */
+            .item-table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #ccc; }
+            .item-table th { background: #6A1B9A !important; color: white !important; padding: 8px 5px; font-size: 11px; text-align: left; border: 1px solid #ccc; }
+            .item-table td { border: 1px solid #ccc; padding: 8px 5px; font-size: 12px; }
+            .text-right { text-align: right; }
+
+            /* Totals */
+            .total-table { width: 60%; float: right; margin-top: 10px; }
+            .total-row td { padding: 4px 0; font-size: 13px; }
+            .net-pay { font-size: 18px; font-weight: bold; color: #6A1B9A; border-top: 2px solid #333; padding-top: 10px; }
+
+            .footer-section { position: fixed; bottom: 10mm; left: 0; width: 100%; text-align: center; border-top: 1px solid #ccc; padding-top: 10px; }
+
+            /* Stamp */
+            .stamp {
+                position: absolute; top: 80px; left: 20px;
+                border: 4px solid; padding: 10px 30px;
+                font-size: 24px; font-weight: 900; text-transform: uppercase;
+                transform: rotate(-15deg); opacity: 0.6; z-index: 99;
+            }
+            .st-paid { color: #27ae60; border-color: #27ae60; }
+            .st-unpaid { color: #c0392b; border-color: #c0392b; }
+
+            /* --- THERMAL STYLES --- */
+            body.printing-thermal #print-area-thermal {
+                display: block !important;
+                width: 78mm; margin: 0; padding: 2mm;
+                font-family: 'Courier New', monospace; font-size: 12px;
+            }
+            /* Thermal Logo - Full Width */
+            .th-logo-img { width: 100%; height: auto; display: block; margin-bottom: 10px; filter: grayscale(100%); }
+            
+            .th-center { text-align: center; }
+            .th-line { border-bottom: 1px dashed #000; margin: 5px 0; }
+            .th-flex { display: flex; justify-content: space-between; margin-bottom: 2px; }
+            .th-bold { font-weight: bold; }
+            .th-sm { font-size: 10px; color: #333; }
+        }
+    </style>
+</head>
+<body>
+<div id="loadingScreen" class="loading-overlay">
+        <div style="color:#6A1B9A; font-size:40px;"><i class="fas fa-spinner fa-spin"></i></div>
+        <div style="margin-top:10px; font-weight:bold; color:#555;">Loading Invoice...</div>
+    </div>
+
+    <div class="header no-print">
+        <div style="display:flex; align-items:center;">
+            
+            <span style="font-size:18px; font-weight:600;">View Invoice</span>
+        </div>
+    </div>
+
+    <div class="dashboard-container no-print">
+        <div class="tiles-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+            <div class="tile" style="border-color: #333; padding: 15px;" onclick="printInvoice('a4')">
+                <i class="fas fa-print" style="color:#333; font-size: 20px;"></i>
+                <span style="font-size:12px;">Print A4</span>
+            </div>
+            <div class="tile" style="border-color: #666; padding: 15px;" onclick="printInvoice('thermal')">
+                <i class="fas fa-receipt" style="color:#666; font-size: 20px;"></i>
+                <span style="font-size:12px;">Thermal</span>
+            </div>
+        </div>
+
+        <div class="job-card" style="background:white; text-align:center; padding-top:20px;">
+            <img src="assets/logo.png" style="width:100px; display:block; margin:0 auto;">
+            <h2 style="color:var(--primary); margin:5px 0;" id="prevCoName">Purple Auto Spa</h2>
+            <div style="font-size:12px; color:#777; margin-bottom:15px;">Invoice Preview</div>
+            
+            <div style="padding:15px; background:#f9f9f9; border-radius:8px; text-align:left; border:1px solid #eee;">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:#777;">Inv No:</span>
+                    <strong id="prevInv">...</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <span style="color:#777;">Client:</span>
+                    <strong id="prevClient">...</strong>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:18px; color:var(--primary); margin-top:10px;">
+                    <span>Net Payable:</span>
+                    <strong id="prevTotal">₹0</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="print-area-a4">
+        <table class="layout-table">
+            <tr>
+                <td style="width: 60%;">
+                    <img src="assets/logo.png" class="print-logo">
+                    <div class="gray-text" id="companyDetailsBlock">Loading...</div>
+                </td>
+                <td style="width: 40%; text-align: right; vertical-align: top;">
+                    <div class="inv-header">INVOICE</div>
+                    <div style="font-size:14px; margin-top:5px; color:#333;"># <b id="a4Inv"></b></div>
+                    <div style="font-size:14px; color:#555;">Date: <span id="a4Date"></span></div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="layout-table" style="margin-top: 15px;">
+            <tr>
+                <td style="width: 50%;">
+                    <div class="info-box">
+                        <span class="lbl">Bill To</span>
+                        <span class="val" id="a4Client">Client Name</span>
+                        <span style="font-size:12px;" id="a4Mobile">Mobile</span>
+                    </div>
+                </td>
+                <td style="width: 50%;">
+                    <div class="info-box">
+                        <span class="lbl">Vehicle Details</span>
+                        <span class="val" id="a4Veh">Vehicle Name</span>
+                        <span style="font-size:12px;" id="a4VehNo">Number</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <table class="item-table" id="a4MainTable">
+            </table>
+
+        <div style="position:relative; margin-top: 10px;">
+            <table class="total-table" id="a4TotalsTable">
+                </table>
+            
+            <div id="a4Stamp" class="stamp" style="display:none;">UNPAID</div>
+            <div style="clear:both;"></div>
+        </div>
+
+        <div class="footer-section">
+            <div class="gray-text" style="font-size:10px; margin-bottom:5px;">
+                Terms: Goods once sold will not be taken back. Subject to jurisdiction.
+            </div>
+            <div style="font-weight:bold; color:#6A1B9A;" id="footerCoName">Purple Auto Spa</div>
+        </div>
+    </div>
+
+    <div id="print-area-thermal">
+        <div class="th-center">
+            <img src="assets/logo.png" class="th-logo-img">
+            <div id="thCoAddress" style="font-size:10px;">Loading...</div>
+            <div id="thCoMobile" style="font-size:10px;">Loading...</div>
+        </div>
+        <div class="th-line"></div>
+        <div class="th-flex"><span>Inv: <span id="thInv"></span></span><span id="thDate"></span></div>
+        <div class="th-flex"><span><span id="thClient"></span></span></div>
+        <div class="th-line"></div>
+        
+        <div id="thList"></div> <div class="th-line"></div>
+        <div id="thTotals"></div> <div id="thStamp" style="text-align:center; border:2px solid black; margin:10px 0; font-weight:bold;">PAID</div>
+        <div class="th-center" style="margin-top:10px; font-size:10px;">Thank You! Visit Again</div>
+    </div>
+
+<script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+
+    <script>
+        checkAuth();
+
+        function cleanID(id) { 
+            return String(id).replace(/[^a-zA-Z0-9]/g, '').trim(); 
+        }
+
+        window.onload = async function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rawId = urlParams.get('id');
+            const autoPrint = urlParams.get('autoPrint');
+
+            if(!rawId) {
+                document.getElementById('loadingScreen').style.display = 'none';
+                showToast("Invoice ID Missing", "error");
+                return;
+            }
+
+            try {
+                const [settingsRes, jobsRes] = await Promise.all([
+                    apiRequest('getSettings'),
+                    apiRequest('getJobs')
+                ]);
+
+                document.getElementById('loadingScreen').style.display = 'none';
+
+                if(settingsRes.status === 'success') {
+                    const s = settingsRes.data;
+                    document.getElementById('companyDetailsBlock').innerHTML = `${s.address1}<br>${s.address2}<br>Mobile: +91 ${s.mobile}`;
+                    document.getElementById('footerCoName').innerText = s.name;
+                    document.getElementById('prevCoName').innerText = s.name;
+                    document.getElementById('thCoAddress').innerText = s.address1 + ", " + s.address2;
+                    document.getElementById('thCoMobile').innerText = "+91 " + s.mobile;
+                }
+
+                if (jobsRes.status === 'success') {
+                    const allJobs = [...jobsRes.active, ...jobsRes.history];
+                    const targetID = cleanID(rawId);
+                    const job = allJobs.find(j => cleanID(j.InvoiceNo) === targetID);
+
+                    if (job) {
+                        renderInvoice(job);
+                        if(autoPrint) setTimeout(() => printInvoice('a4'), 1000);
+                    } else {
+                        showToast("Invoice Not Found", "error");
+                    }
+                }
+            } catch (e) {
+                document.getElementById('loadingScreen').style.display = 'none';
+                console.error(e);
+            }
+        };
+
+        function renderInvoice(job) {
+            // Helpers
+            const money = (amt) => "₹" + parseFloat(amt).toFixed(2);
+            let services = [];
+            try { services = typeof job.ServiceList === 'string' ? JSON.parse(job.ServiceList) : job.ServiceList; } catch(e){}
+
+            const dateStr = formatDate(job.Date);
+            const isGST = job.GST_Mode === 'ON';
+            
+            // Screen Preview
+            setText('prevInv', job.InvoiceNo);
+            setText('prevClient', job.ClientName);
+            setText('prevVeh', job.VehicleName);
+            setText('prevTotal', money(job.NetPayable));
+
+            // Basic A4 Info
+            setText('a4Inv', job.InvoiceNo);
+            setText('a4Date', dateStr);
+            setText('a4Client', job.ClientName);
+            setText('a4Mobile', job.Mobile);
+            setText('a4Veh', job.VehicleName);
+            setText('a4VehNo', job.VehicleNo);
+
+            // Basic Thermal Info
+            setText('thInv', job.InvoiceNo);
+            setText('thDate', dateStr);
+            setText('thClient', job.ClientName);
+
+            // --- CALCULATION LOGIC ---
+            let tableHTML = '';
+            let thermalHTML = '';
+            
+            let totalBase = 0;
+            let totalGST = 0;
+            let subTotal = 0;
+
+            if (isGST) {
+                // GST ON HEADER (5 Columns)
+                tableHTML += `<thead><tr>
+                    <th style="width:5%">Sr</th>
+                    <th style="width:35%">Service</th>
+                    <th class="text-right" style="width:20%">Base Price</th>
+                    <th class="text-right" style="width:20%">GST (18%)</th>
+                    <th class="text-right" style="width:20%">Total</th>
+                </tr></thead><tbody>`;
+            } else {
+                // GST OFF HEADER (3 Columns)
+                tableHTML += `<thead><tr>
+                    <th style="width:10%">Sr</th>
+                    <th style="width:60%">Service Description</th>
+                    <th class="text-right" style="width:30%">Total Price</th>
+                </tr></thead><tbody>`;
+            }
+
+            services.forEach((s, i) => {
+                const itemTotal = parseFloat(s.price);
+                
+                if (isGST) {
+                    // Back calculate Base from Inclusive
+                    const basePrice = itemTotal / 1.18;
+                    const gstAmt = itemTotal - basePrice;
+
+                    totalBase += basePrice;
+                    totalGST += gstAmt;
+                    
+                    // A4 Row
+                    tableHTML += `<tr>
+                        <td>${i+1}</td>
+                        <td>${s.name}</td>
+                        <td class="text-right">${money(basePrice)}</td>
+                        <td class="text-right">${money(gstAmt)}</td>
+                        <td class="text-right">${money(itemTotal)}</td>
+                    </tr>`;
+
+                    // Thermal Row
+                    thermalHTML += `
+                        <div style="margin-bottom:5px;">
+                            <div style="font-weight:bold;">${s.name}</div>
+                            <div class="th-flex th-sm">
+                                <span>Base: ${parseFloat(basePrice).toFixed(0)}</span>
+                                <span>GST: ${parseFloat(gstAmt).toFixed(0)}</span>
+                                <span>Total: ${itemTotal}</span>
+                            </div>
+                        </div>`;
+                } else {
+                    totalBase += itemTotal; // Just sum totals
+                    
+                    // A4 Row
+                    tableHTML += `<tr>
+                        <td>${i+1}</td>
+                        <td>${s.name}</td>
+                        <td class="text-right">${money(itemTotal)}</td>
+                    </tr>`;
+
+                    // Thermal Row
+                    thermalHTML += `<div class="th-flex"><span>${s.name}</span><span>${money(itemTotal)}</span></div>`;
+                }
+            });
+
+            tableHTML += `</tbody>`;
+            document.getElementById('a4MainTable').innerHTML = tableHTML;
+            document.getElementById('thList').innerHTML = thermalHTML;
+
+            // --- TOTALS LOGIC ---
+            subTotal = totalBase + totalGST;
+            const discount = parseFloat(job.Discount || 0);
+            const netPayable = parseFloat(job.NetPayable);
+
+            let totalsHTML = '';
+            let thTotalsHTML = '';
+
+            if (isGST) {
+                totalsHTML += `
+                    <tr class="total-row"><td>Total Base Price:</td><td class="text-right">${money(totalBase)}</td></tr>
+                    <tr class="total-row"><td>Total GST (18%):</td><td class="text-right">${money(totalGST)}</td></tr>
+                    <tr class="total-row" style="border-top:1px solid #ddd;"><td><b>Subtotal:</b></td><td class="text-right"><b>${money(subTotal)}</b></td></tr>
+                `;
+                thTotalsHTML += `
+                    <div class="th-flex"><span>Base Total</span><span>${money(totalBase)}</span></div>
+                    <div class="th-flex"><span>Total GST</span><span>${money(totalGST)}</span></div>
+                    <div class="th-flex th-bold"><span>Subtotal</span><span>${money(subTotal)}</span></div>
+                `;
+            } else {
+                totalsHTML += `<tr class="total-row"><td>Subtotal:</td><td class="text-right">${money(totalBase)}</td></tr>`;
+                thTotalsHTML += `<div class="th-flex"><span>Subtotal</span><span>${money(totalBase)}</span></div>`;
+            }
+
+            // Common Discount & Net
+            totalsHTML += `
+                <tr class="total-row"><td>Discount:</td><td class="text-right" style="color:red;">- ${money(discount)}</td></tr>
+                <tr class="total-row"><td class="net-pay">NET PAYABLE:</td><td class="net-pay text-right">${money(netPayable)}</td></tr>
+            `;
+
+            thTotalsHTML += `
+                <div class="th-flex"><span>Discount</span><span>-${money(discount)}</span></div>
+                <div class="th-flex th-bold" style="font-size:14px; margin-top:5px; border-top:1px solid black; padding-top:5px;">
+                    <span>NET PAYABLE</span><span>${money(netPayable)}</span>
+                </div>
+            `;
+
+            document.getElementById('a4TotalsTable').innerHTML = totalsHTML;
+            document.getElementById('thTotals').innerHTML = thTotalsHTML;
+
+            // Stamp
+            const stamp = document.getElementById('a4Stamp');
+            const thStamp = document.getElementById('thStamp');
+            const status = job.PaymentStatus;
+            
+            stamp.style.display = 'block';
+            stamp.innerText = status === 'Paid' ? "PAID" : "UNPAID";
+            stamp.className = status === 'Paid' ? "stamp st-paid" : "stamp st-unpaid";
+            
+            thStamp.innerText = status === 'Paid' ? "PAID" : "UNPAID";
+        }
+
+        function setText(id, txt) {
+            const el = document.getElementById(id);
+            if(el) el.innerText = txt;
+        }
+
+        function printInvoice(type) {
+            document.body.classList.remove('printing-a4', 'printing-thermal');
+            document.body.classList.add(type === 'a4' ? 'printing-a4' : 'printing-thermal');
+            window.print();
+        }
+
+        function goBack() {
+            if(document.referrer.includes('new_job')) window.location.href = 'active_jobs.html';
+            else window.history.back();
+        }
+    </script>
+</body>
+</html>

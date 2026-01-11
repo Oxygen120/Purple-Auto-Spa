@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Space - Purple Auto Spa</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* Hero & Stats */
+        .hero-card {
+            background: linear-gradient(135deg, #4A148C, #7B1FA2);
+            padding: 30px 20px 40px; text-align: center; color: white;
+            border-radius: 0 0 25px 25px; margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(106, 27, 154, 0.2); position: relative;
+        }
+        .hero-avatar {
+            width: 70px; height: 70px; background: rgba(255,255,255,0.2);
+            border-radius: 50%; margin: 0 auto 10px; display: flex;
+            align-items: center; justify-content: center; font-size: 30px;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+        .hero-name { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+        .hero-role { font-size: 13px; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; }
+        .hero-join { font-size: 11px; background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 15px; margin-top: 5px; display: inline-block; }
+
+        .stats-floating { display: flex; justify-content: center; gap: 15px; margin-top: -30px; margin-bottom: 25px; padding: 0 15px; }
+        .stat-pill { background: white; flex: 1; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.08); border: 1px solid #f0f0f0; }
+        .stat-val { font-size: 18px; font-weight: 800; color: #333; display: block; }
+        .stat-lbl { font-size: 10px; color: #888; text-transform: uppercase; font-weight: 600; margin-top: 5px; }
+
+        /* Punch Button */
+        .punch-container { padding: 0 20px; margin-bottom: 25px; }
+        .punch-btn {
+            background: #6A1B9A; color: white; border: none; padding: 16px;
+            width: 100%; border-radius: 50px; font-weight: 700; cursor: pointer;
+            font-size: 16px; display: flex; align-items: center; justify-content: center; 
+            gap: 10px; box-shadow: 0 8px 20px rgba(106, 27, 154, 0.3); transition: 0.2s;
+        }
+        .punch-btn:active { transform: scale(0.98); }
+        .punch-btn.disabled { background: #e0e0e0; color: #999; box-shadow: none; pointer-events: none; }
+        .punch-btn.pending { background: #FF9800; box-shadow: 0 8px 20px rgba(255, 152, 0, 0.3); }
+        .punch-btn.present { background: #2e7d32; box-shadow: 0 8px 20px rgba(46, 125, 50, 0.3); }
+        .punch-btn.halfday { background: #e67e22; box-shadow: 0 8px 20px rgba(230, 126, 34, 0.3); }
+
+        /* Calendar */
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .cal-nav-btn { background: #f4f6f8; border: none; width: 30px; height: 30px; border-radius: 50%; color: #555; cursor: pointer; }
+        .cal-title { font-weight: 700; color: #333; font-size: 15px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; }
+        .cal-head { font-size: 11px; font-weight: 600; color: #999; margin-bottom: 5px; }
+        .cal-day {
+            height: 35px; display: flex; align-items: center; justify-content: center;
+            font-size: 13px; border-radius: 8px; color: #444; background: #fafafa;
+        }
+        
+        /* Status Colors */
+        .cal-day.empty { background: transparent; }
+        .cal-day.present { background: #E8F5E9; color: #2e7d32; font-weight: 700; border: 1px solid #C8E6C9; }
+        .cal-day.halfday { background: #FFF3E0; color: #e67e22; font-weight: 700; border: 1px solid #FFE0B2; }
+        .cal-day.absent { background: #FFEBEE; color: #c0392b; font-weight: 700; border: 1px solid #FFCDD2; }
+        .cal-day.today { border: 2px solid #6A1B9A; font-weight: 700; }
+        
+        .admin-clickable { cursor: pointer; }
+
+        /* Admin Modal */
+        .att-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; display: none; justify-content: center; align-items: center; }
+        .att-box { background: white; padding: 20px; border-radius: 12px; width: 85%; max-width: 300px; text-align: center; }
+        .att-opt { display: block; width: 100%; padding: 12px; margin-bottom: 8px; border: 1px solid #eee; border-radius: 8px; font-weight: 600; background: white; cursor: pointer; }
+        .att-opt.p { color: #27ae60; border-color: #27ae60; }
+        .att-opt.h { color: #e67e22; border-color: #e67e22; }
+        .att-opt.a { color: #c0392b; border-color: #c0392b; }
+        
+        .ledger-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+        .pay-badge { background: #E8F5E9; color: #2e7d32; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    </style>
+</head>
+<body style="background:#F9FAFB;">
+
+    <div class="hero-card">
+        <div class="header-nav" style="position:absolute; top:15px; left:15px;">
+            <i class="fas fa-arrow-left" onclick="window.history.back()" style="font-size:20px; cursor:pointer;"></i>
+        </div>
+        <div class="hero-avatar"><i class="fas fa-user"></i></div>
+        <div class="hero-name" id="dispName">Loading...</div>
+        <div class="hero-role">Staff Member</div>
+        <div class="hero-join" id="dispJoin">Joined: --</div>
+    </div>
+
+    <div class="stats-floating">
+        <div class="stat-pill">
+            <span class="stat-val" id="dispSalary">₹0</span>
+            <span class="stat-lbl">Monthly Salary</span>
+        </div>
+        <div class="stat-pill">
+            <span class="stat-val" id="dispBalance" style="color:#6A1B9A;">₹0</span>
+            <span class="stat-lbl">Wallet Balance</span>
+        </div>
+    </div>
+
+    <div class="punch-container" id="punchContainer">
+        <button id="punchBtn" class="punch-btn" onclick="handlePunchIn()">
+            <i class="fas fa-fingerprint"></i> <span>Punch In Now</span>
+        </button>
+        <div id="punchMsg" style="text-align:center; font-size:12px; color:#888; margin-top:8px; display:none;">
+            Punching allowed between 08:00 AM - 09:00 PM
+        </div>
+    </div>
+
+    <div class="form-card" style="margin: 0 15px 20px 15px;">
+        <div class="cal-header">
+            <button class="cal-nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+            <span class="cal-title" id="calTitle">January 2026</span>
+            <button class="cal-nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+        </div>
+        
+        <div class="cal-grid" id="calGridHeader">
+            <div class="cal-head">S</div><div class="cal-head">M</div><div class="cal-head">T</div><div class="cal-head">W</div><div class="cal-head">T</div><div class="cal-head">F</div><div class="cal-head">S</div>
+        </div>
+        <div class="cal-grid" id="calGridBody"></div>
+        
+        <div style="font-size:10px; color:#999; text-align:center; margin-top:10px; display:flex; justify-content:center; gap:10px;">
+            <span><span style="color:#2e7d32">●</span> Present</span>
+            <span><span style="color:#e67e22">●</span> Half Day</span>
+            <span><span style="color:#c0392b">●</span> Absent</span>
+        </div>
+    </div>
+
+    <div class="form-card" style="margin: 0 15px 20px 15px;">
+        <h3 style="font-size:15px; margin-bottom:15px; font-weight:700;">Payment History</h3>
+        <div id="ledgerList">
+            <div style="text-align:center; color:#999; font-size:13px;">No payments yet</div>
+        </div>
+    </div>
+
+    <div class="att-modal" id="adminModal">
+        <div class="att-box">
+            <h3 style="margin-bottom:15px;">Update Attendance</h3>
+            <p id="modalDate" style="color:#666; font-size:13px; margin-bottom:20px;">--</p>
+            <button class="att-opt p" onclick="adminUpdate('Present')">Present</button>
+            <button class="att-opt h" onclick="adminUpdate('Half Day')">Half Day</button>
+            <button class="att-opt a" onclick="adminUpdate('Absent')">Absent</button>
+            <button onclick="closeModal()" style="background:none; border:none; color:#777; margin-top:10px; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+
+    <script>
+        checkAuth();
+        
+        // --- 1. GLOBAL SETTINGS (Set initially to defaults) ---
+        let SHOP_LAT = 0;
+        let SHOP_LNG = 0;
+        let RADIUS_METERS = 100;
+        let isLocationSet = false;
+
+        let targetStaffId = null;
+        let targetStaffName = "";
+        let isAdminView = false;
+        let attendanceHistory = []; 
+        let joiningDateObj = null;
+
+        let curYear = new Date().getFullYear();
+        let curMonth = new Date().getMonth(); 
+        let selectedDateForEdit = null;
+
+        window.onload = async function() {
+            const user = getSession();
+            
+            // 2. Fetch Settings First (Location Logic)
+            await loadSettings();
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewId = urlParams.get('staffId');
+            
+            if (viewId && viewId !== String(user.id)) {
+                targetStaffId = viewId;
+                targetStaffName = urlParams.get('viewName') || "Staff";
+                isAdminView = true;
+                document.getElementById('punchContainer').style.display = 'none'; // Hide Punch for Admin
+                document.getElementById('dispName').innerText = targetStaffName;
+            } else {
+                targetStaffId = user.id;
+                targetStaffName = user.name;
+                isAdminView = false;
+                document.getElementById('dispName').innerText = user.name;
+            }
+
+            loadMySpaceData();
+        };
+
+        // --- FETCH SETTINGS FROM SHEET ---
+        async function loadSettings() {
+            const res = await apiRequest('getSettings');
+            if(res.status === 'success' && res.data) {
+                SHOP_LAT = res.data.lat;
+                SHOP_LNG = res.data.lng;
+                RADIUS_METERS = res.data.radius || 100;
+                
+                if(SHOP_LAT && SHOP_LNG) {
+                    isLocationSet = true;
+                    console.log("Geofence Active:", RADIUS_METERS, "m");
+                }
+            }
+        }
+
+        async function loadMySpaceData() {
+            const res = await apiRequest('getMySpace', { staffId: String(targetStaffId) });
+            
+            if (res.status === 'success') {
+                document.getElementById('dispName').innerText = res.staffInfo.name;
+                document.getElementById('dispSalary').innerText = formatMoney(res.staffInfo.salary);
+                document.getElementById('dispBalance').innerText = formatMoney(res.staffInfo.balance);
+                
+                let joinStr = "--";
+                if (res.staffInfo.joiningDate) {
+                    joiningDateObj = new Date(res.staffInfo.joiningDate);
+                    joinStr = joiningDateObj.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                }
+                document.getElementById('dispJoin').innerText = "Joined: " + joinStr;
+
+                attendanceHistory = res.attendance || [];
+                renderCalendar();
+
+                if(!isAdminView) {
+                    checkTimeAndSetButton(res.todayStatus);
+                }
+                renderLedger(res.ledger);
+            }
+        }
+
+        // --- BUTTON & TIME LOGIC ---
+        function checkTimeAndSetButton(status) {
+            const msg = document.getElementById('punchMsg');
+            const now = new Date();
+            const h = now.getHours();
+
+            if (status === 'Pending') { setBtnState('pending', 'Approval Pending', 'fas fa-clock'); return; } 
+            if (status === 'Present') { setBtnState('present', 'Present Today', 'fas fa-check-circle'); return; }
+            if (status === 'Half Day') { setBtnState('halfday', 'Half Day Marked', 'fas fa-adjust'); return; }
+
+            // 8 AM to 9 PM
+            if (h < 8 || h >= 21) {
+                setBtnState('disabled', 'Punching Closed', 'fas fa-moon');
+                msg.style.display = 'block';
+            } else {
+                setBtnState('active', 'Punch In Now', 'fas fa-fingerprint');
+            }
+        }
+
+        function setBtnState(type, text, icon) {
+            const btn = document.getElementById('punchBtn');
+            btn.className = `punch-btn ${type}`;
+            btn.innerHTML = `<i class="${icon}"></i> <span>${text}</span>`;
+            if(type === 'active') btn.onclick = handlePunchIn;
+            else btn.onclick = null;
+        }
+
+        // --- DISTANCE LOGIC ---
+        function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+            var R = 6371; 
+            var dLat = deg2rad(lat2-lat1);  
+            var dLon = deg2rad(lon2-lon1); 
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon/2) * Math.sin(dLon/2); 
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+            var d = R * c; 
+            return d * 1000; // Meters
+        }
+
+        function deg2rad(deg) { return deg * (Math.PI/180); }
+
+        // --- UPDATED PUNCH LOGIC ---
+        async function handlePunchIn() {
+            const btn = document.getElementById('punchBtn');
+            
+            // Check Geofence Active
+            if (!isLocationSet) {
+                showToast("Location settings not configured by Admin.", "error");
+                return;
+            }
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Locating...';
+            btn.classList.add('disabled');
+            
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(async (pos) => {
+                    const userLat = pos.coords.latitude;
+                    const userLng = pos.coords.longitude;
+                    
+                    // 1. Check Distance
+                    const distance = getDistanceFromLatLonInMeters(SHOP_LAT, SHOP_LNG, userLat, userLng);
+                    
+                    if (distance > RADIUS_METERS) {
+                        showToast(`Too far! You are ${Math.round(distance)}m away.`, "error");
+                        checkTimeAndSetButton("Absent"); 
+                        return;
+                    }
+
+                    // 2. Punch with "Staff Punching" text
+                    const res = await apiRequest('punchAttendance', { 
+                        staffId: targetStaffId, 
+                        name: targetStaffName,
+                        location: "Staff Punching", // THIS IS WHAT SAVES IN SHEET COLUMN F
+                        time: new Date().toLocaleTimeString('en-US', {hour12:false}) 
+                    });
+
+                    if(res.status === 'success') { 
+                        showToast("Punched Successfully!", "success");
+                        const h = new Date().getHours();
+                        if(h >= 12) setBtnState('halfday', 'Half Day Marked', 'fas fa-adjust');
+                        else setBtnState('pending', 'Approval Pending', 'fas fa-clock');
+                    } else { 
+                        showToast(res.message, "error"); 
+                        checkTimeAndSetButton('Absent');
+                    }
+                }, 
+                (err) => { showToast("GPS Error. Enable Location.", "error"); checkTimeAndSetButton('Absent'); },
+                { enableHighAccuracy: true, timeout: 10000 }
+                );
+            } else { showToast("GPS not supported.", "error"); }
+        }
+
+        // --- CALENDAR LOGIC (UNCHANGED) ---
+        function changeMonth(dir) {
+            curMonth += dir;
+            if(curMonth > 11) { curMonth = 0; curYear++; }
+            if(curMonth < 0) { curMonth = 11; curYear--; }
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calGridBody');
+            grid.innerHTML = '';
+            
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            document.getElementById('calTitle').innerText = `${monthNames[curMonth]} ${curYear}`;
+
+            const firstDay = new Date(curYear, curMonth, 1).getDay();
+            const daysInMonth = new Date(curYear, curMonth + 1, 0).getDate();
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            for(let i=0; i<firstDay; i++) grid.innerHTML += `<div class="cal-day empty"></div>`;
+
+            for(let i=1; i<=daysInMonth; i++) {
+                const currentDate = new Date(curYear, curMonth, i);
+                const dateStr = `${curYear}-${String(curMonth+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                
+                const record = attendanceHistory.find(r => r.date === dateStr);
+                const status = record ? record.status : null;
+                
+                let classes = 'cal-day';
+                if(isAdminView) classes += ' admin-clickable';
+
+                if (status === 'Present') classes += ' present';
+                else if (status === 'Half Day') classes += ' halfday';
+                else {
+                    if (joiningDateObj && currentDate >= joiningDateObj && currentDate < today) {
+                         classes += ' absent'; 
+                    }
+                }
+
+                if(currentDate.getTime() === today.getTime()) classes += ' today';
+                
+                let clickAttr = '';
+                if(isAdminView) { clickAttr = `onclick="openAdminModal('${dateStr}')"`; }
+
+                grid.innerHTML += `<div class="${classes}" ${clickAttr}>${i}</div>`;
+            }
+        }
+
+        function openAdminModal(dateStr) {
+            selectedDateForEdit = dateStr;
+            document.getElementById('modalDate').innerText = "Editing: " + dateStr;
+            document.getElementById('adminModal').style.display = 'flex';
+        }
+        function closeModal() { document.getElementById('adminModal').style.display = 'none'; }
+
+        async function adminUpdate(newStatus) {
+            closeModal();
+            showToast("Updating...", "info");
+            
+            const res = await apiRequest('adminSetAttendance', {
+                staffId: targetStaffId,
+                staffName: targetStaffName,
+                date: selectedDateForEdit,
+                status: newStatus
+            });
+
+            if(res.status === 'success') { showToast("Updated!", "success"); loadMySpaceData(); } 
+            else { showToast("Update Failed", "error"); }
+        }
+
+        function renderLedger(list) {
+            const c = document.getElementById('ledgerList'); 
+            if(!list || list.length === 0) return;
+            c.innerHTML = '';
+            list.forEach(i => {
+                const d = new Date(i.date).toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+                c.innerHTML += `<div class="ledger-item"><div><div style="font-weight:600; color:#333;">Salary Received</div><div style="font-size:11px; color:#888;">${d}</div></div><div class="pay-badge">+ ₹${i.amount}</div></div>`;
+            });
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Reports - Purple Auto Spa</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        /* --- UI STYLES (Screen Only) --- */
+        .table-responsive {
+            background: white; margin: 15px; border-radius: 12px; padding: 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05); overflow: hidden; min-height: 300px;
+        }
+        
+        .modern-table { width: 100%; border-collapse: collapse; font-size: 13px; color: #444; }
+        .modern-table thead th {
+            background: linear-gradient(to right, #6A1B9A, #8E24AA);
+            color: white; text-align: left; padding: 15px;
+            font-weight: 600; text-transform: uppercase; font-size: 11px;
+            letter-spacing: 0.5px; position: sticky; top: 0;
+        }
+        .modern-table tbody tr { border-bottom: 1px solid #f0f0f0; transition: 0.2s; }
+        .modern-table tbody tr:hover { background-color: #f9f0ff; }
+        .modern-table td { padding: 12px 15px; vertical-align: middle; }
+
+        /* Badges */
+        .badge { padding: 4px 10px; border-radius: 50px; font-size: 10px; font-weight: 700; text-transform: uppercase; display: inline-block; }
+        .badge-green { background: #e8f5e9; color: #2e7d32; }
+        .badge-red { background: #ffebee; color: #c62828; }
+        .badge-orange { background: #fff3e0; color: #ef6c00; }
+        .badge-blue { background: #e3f2fd; color: #1565c0; }
+        
+        .amount-col { text-align: right; font-weight: 700; color: #333; }
+        .txt-secondary { color: #888; font-size: 11px; display: block; margin-top: 2px; }
+
+        /* Controls */
+        .controls-card {
+            background: white; margin: 15px; padding: 15px; border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 10px;
+            align-items: center; justify-content: space-between;
+        }
+        .filter-group { display: flex; gap: 10px; flex: 1; min-width: 200px; align-items: center; }
+        .date-input { padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px; width: 100%; outline: none; }
+        
+        .btn-filter {
+            background: #6A1B9A; color: white; border: none; padding: 10px 20px;
+            border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px;
+        }
+
+        /* Nav */
+        .report-nav {
+            display: flex; overflow-x: auto; background: white; padding: 15px 10px;
+            gap: 10px; border-bottom: 1px solid #eee; white-space: nowrap;
+        }
+        .report-nav::-webkit-scrollbar { display: none; }
+        .nav-pill {
+            padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 600;
+            background: #f4f6f8; color: #555; cursor: pointer; border: 1px solid #eee;
+            transition: 0.3s; flex-shrink: 0;
+        }
+        .nav-pill.active {
+            background: #6A1B9A; color: white; border-color: #6A1B9A;
+            box-shadow: 0 4px 10px rgba(106, 27, 154, 0.2);
+        }
+
+        .action-btns { position: fixed; bottom: 20px; right: 20px; z-index: 90; }
+        .fab { width: 55px; height: 55px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); background: #333; transition: 0.2s; }
+        .fab:hover { transform: translateY(-3px); }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <span style="font-size:18px; font-weight:600;">Reports & Analytics</span>
+    </div>
+
+    <div class="report-nav">
+        <div class="nav-pill active" onclick="setReport('datewise')">Datewise Ledger</div>
+        <div class="nav-pill" onclick="setReport('client')">Client History</div>
+        <div class="nav-pill" onclick="setReport('credit')">Udhar List</div>
+        <div class="nav-pill" onclick="setReport('pnl')">Master P&L</div>
+        <div class="nav-pill" onclick="setReport('expenses')">Expenses</div>
+        <div class="nav-pill" onclick="setReport('salary')">Staff Salary</div>
+        <div class="nav-pill" onclick="setReport('upcoming')">Bookings</div>
+    </div>
+
+    <div class="controls-card">
+        <div class="filter-group" id="dateFilters">
+            <input type="date" id="startDate" class="date-input">
+            <input type="date" id="endDate" class="date-input">
+            <button class="btn-filter" onclick="runFilter()">
+                <i class="fas fa-search"></i> Get
+            </button>
+        </div>
+        
+        <div class="filter-group" id="searchFilter" style="display:none;">
+            <input type="number" id="searchMobile" class="date-input" placeholder="Enter Mobile Number">
+            <button class="btn-filter" onclick="runFilter()">Search</button>
+        </div>
+
+        <div style="font-weight:700; color:#6A1B9A; font-size:16px;" id="totalDisplay">Total: ₹0</div>
+    </div>
+
+    <div class="table-responsive" id="reportOutput">
+        <div style="text-align:center; padding:50px; color:#999;">
+            <i class="fas fa-spinner fa-spin"></i> Loading Data...
+        </div>
+    </div>
+
+    <div id="chartContainer" style="background:white; margin:15px; padding:15px; border-radius:12px; display:none;">
+        <canvas id="masterChart" height="250"></canvas>
+    </div>
+
+    <div class="action-btns">
+        <div class="fab" onclick="generatePDF()" title="Download PDF"><i class="fas fa-file-pdf"></i></div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+
+    <script>
+        checkAuth('Admin'); 
+
+        let rawData = { jobs: [], expenses: [], bookings: [] };
+        // DEFAULT SETTINGS
+        let companySettings = {
+            name: 'Purple Auto Spa',
+            address1: 'Auto Spa Address',
+            address2: 'City, State',
+            mobile: '9999999999'
+        };
+        let logoBase64 = null; 
+        let currentReport = 'datewise';
+        let pnlStats = { revenue: 0, expense: 0, profit: 0 }; 
+
+        window.onload = async function() {
+            const date = new Date();
+            const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+            document.getElementById('startDate').valueAsDate = firstDay;
+            document.getElementById('endDate').valueAsDate = date;
+
+            // Load Logo for PDF (Fixed for CORS/Local issues)
+            convertImgToBase64('assets/logo.png', function(base64) {
+                if(base64) logoBase64 = base64;
+                else console.log("Logo load failed (CORS or Path issue)");
+            });
+
+            await loadAllData();
+        };
+
+        async function loadAllData() {
+            try {
+                const [jobRes, expRes, bkRes, setRes] = await Promise.all([
+                    apiRequest('getJobs'),
+                    apiRequest('getExpenses'),
+                    apiRequest('getBookings'),
+                    apiRequest('getSettings')
+                ]);
+
+                if(jobRes.status === 'success') rawData.jobs = [...jobRes.active, ...jobRes.history];
+                if(expRes.status === 'success') rawData.expenses = expRes.expenses;
+                if(bkRes.status === 'success') rawData.bookings = bkRes.data;
+                
+                // Update Settings
+                if(setRes.status === 'success') {
+                    companySettings = setRes.data;
+                }
+
+                runFilter();
+            } catch(e) {
+                document.getElementById('reportOutput').innerHTML = '<div style="text-align:center; color:red; padding:20px;">Connection Failed</div>';
+            }
+        }
+
+        // --- FIXED: IMAGE TO BASE64 (Removes CORS block for local files if possible) ---
+        function convertImgToBase64(url, callback) {
+            let img = new Image();
+            if(url.startsWith('http')) img.crossOrigin = 'Anonymous';
+            
+            img.onload = function() {
+                let canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                let ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                try {
+                    callback(canvas.toDataURL('image/png'));
+                } catch(e) {
+                    console.warn("Canvas Tainted: Logo might not show in PDF on local file system.");
+                    callback(null);
+                }
+            };
+            img.onerror = function() { callback(null); }; 
+            img.src = url;
+        }
+
+        // --- FORMATTING UTILS ---
+        function formatSafeTime(val) {
+            if(!val) return '-';
+            if(typeof val === 'string' && val.includes('T')) {
+                const d = new Date(val);
+                return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+            }
+            return val;
+        }
+        function getStatusBadge(status) {
+            let color = 'badge-orange';
+            if(status === 'Delivered' || status === 'Present') color = 'badge-green';
+            if(status === 'Pending' || status === 'Expired') color = 'badge-red';
+            return `<span class="badge ${color}">${status}</span>`;
+        }
+        function getPayBadge(status) {
+            return status === 'Paid' ? `<span class="badge badge-green">PAID</span>` : `<span class="badge badge-red">UNPAID</span>`;
+        }
+
+        // --- SWITCH REPORTS ---
+        function setReport(type) {
+            currentReport = type;
+            document.querySelectorAll('.nav-pill').forEach(p => p.classList.remove('active'));
+            const activeBtn = document.querySelector(`.nav-pill[onclick="setReport('${type}')"]`);
+            if(activeBtn) activeBtn.classList.add('active');
+
+            const dateDiv = document.getElementById('dateFilters');
+            const searchDiv = document.getElementById('searchFilter');
+            const chartDiv = document.getElementById('chartContainer');
+            const outputDiv = document.getElementById('reportOutput');
+
+            dateDiv.style.display = 'none';
+            searchDiv.style.display = 'none';
+            chartDiv.style.display = 'none';
+            outputDiv.style.display = 'block';
+
+            if(['datewise', 'pnl', 'expenses', 'salary'].includes(type)) dateDiv.style.display = 'flex';
+            if(type === 'client') searchDiv.style.display = 'flex';
+
+            runFilter();
+        }
+
+        // --- RENDER SCREEN ---
+        function runFilter() {
+            const start = new Date(document.getElementById('startDate').value);
+            start.setHours(0,0,0,0);
+            const end = new Date(document.getElementById('endDate').value);
+            end.setHours(23,59,59,999);
+
+            let html = '';
+            let total = 0;
+
+            if(currentReport === 'datewise') {
+                const filtered = rawData.jobs.filter(j => new Date(j.Date) >= start && new Date(j.Date) <= end);
+                html = `<table class="modern-table" id="pdfTable"><thead><tr><th>Date</th><th>Client / Mobile</th><th>Vehicle</th><th>Services</th><th class="amount-col">Amount</th></tr></thead><tbody>`;
+                filtered.forEach(j => {
+                    total += parseFloat(j.NetPayable || 0);
+                    let svcs = ""; try { svcs = JSON.parse(j.ServiceList).map(s=>s.name).join(', '); } catch(e){ svcs = "Service"; }
+                    html += `<tr><td>${formatDate(j.Date)}</td><td>${j.ClientName}<span class="txt-secondary">${j.Mobile}</span></td><td>${j.VehicleName}<br><span class="badge badge-blue">${j.VehicleNo}</span></td><td>${svcs}</td><td class="amount-col">₹${j.NetPayable}<br>${getPayBadge(j.PaymentStatus)}</td></tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+            else if(currentReport === 'client') {
+                const search = document.getElementById('searchMobile').value;
+                if(!search) { document.getElementById('reportOutput').innerHTML = '<div style="padding:40px; text-align:center;">Enter Mobile & Search</div>'; return; }
+                const filtered = rawData.jobs.filter(j => String(j.Mobile).includes(search));
+                html = `<table class="modern-table" id="pdfTable"><thead><tr><th>Date</th><th>Vehicle</th><th>Status</th><th>Payment</th><th class="amount-col">Amount</th></tr></thead><tbody>`;
+                filtered.forEach(j => { total += parseFloat(j.NetPayable || 0); html += `<tr><td>${formatDate(j.Date)}</td><td>${j.VehicleName}<br><small>${j.VehicleNo}</small></td><td>${getStatusBadge(j.Status)}</td><td>${getPayBadge(j.PaymentStatus)}</td><td class="amount-col">₹${j.NetPayable}</td></tr>`; });
+                html += `</tbody></table>`;
+            }
+            else if(currentReport === 'credit') {
+                const filtered = rawData.jobs.filter(j => j.PaymentStatus === 'Unpaid' && j.Status !== 'Pending');
+                html = `<table class="modern-table" id="pdfTable"><thead><tr><th>Date</th><th>Client</th><th>Mobile</th><th>Vehicle</th><th class="amount-col">Pending</th></tr></thead><tbody>`;
+                filtered.forEach(j => { total += parseFloat(j.NetPayable || 0); html += `<tr><td>${formatDate(j.Date)}</td><td>${j.ClientName}</td><td>${j.Mobile}</td><td>${j.VehicleName}</td><td class="amount-col" style="color:#c62828;">₹${j.NetPayable}</td></tr>`; });
+                html += `</tbody></table>`;
+            }
+            else if(currentReport === 'pnl') {
+                let rev = 0; let exp = 0;
+                rawData.jobs.forEach(j => { if(new Date(j.Date) >= start && new Date(j.Date) <= end) rev += parseFloat(j.NetPayable || 0); });
+                rawData.expenses.forEach(e => { if(new Date(e.date) >= start && new Date(e.date) <= end) exp += parseFloat(e.amount || 0); });
+                const net = rev - exp;
+                pnlStats = { revenue: rev, expense: exp, profit: net };
+                html = `<div style="display:flex; justify-content:space-around; padding:20px; border:1px solid #ddd; border-radius:12px; margin-bottom:20px;"><div style="text-align:center;">Revenue<br><b style="color:#2e7d32; font-size:20px;">₹${rev}</b></div><div style="text-align:center;">Expense<br><b style="color:#c62828; font-size:20px;">₹${exp}</b></div><div style="text-align:center;">Net Profit<br><b style="color:${net >= 0 ? '#2e7d32' : '#c62828'}; font-size:20px;">₹${net}</b></div></div>`;
+                document.getElementById('chartContainer').style.display = 'block';
+                renderChart(rev, exp);
+                total = net;
+            }
+            else if(currentReport === 'expenses') {
+                const filtered = rawData.expenses.filter(e => new Date(e.date) >= start && new Date(e.date) <= end);
+                html = `<table class="modern-table" id="pdfTable"><thead><tr><th>Date</th><th>Item Detail</th><th>Category</th><th class="amount-col">Amount</th></tr></thead><tbody>`;
+                filtered.forEach(e => { total += parseFloat(e.amount || 0); html += `<tr><td>${formatDate(e.date)}</td><td>${e.item}</td><td><span class="badge badge-orange">${e.type}</span></td><td class="amount-col">- ₹${e.amount}</td></tr>`; });
+                html += `</tbody></table>`;
+            }
+            else if(currentReport === 'salary') {
+                const filtered = rawData.expenses.filter(e => new Date(e.date) >= start && new Date(e.date) <= end && e.type === 'Salary');
+                html = `<table class="modern-table" id="pdfTable"><thead><tr><th>Date</th><th>Description</th><th class="amount-col">Amount</th></tr></thead><tbody>`;
+                filtered.forEach(e => { total += parseFloat(e.amount || 0); html += `<tr><td>${formatDate(e.date)}</td><td>${e.item}</td><td class="amount-col">₹${e.amount}</td></tr>`; });
+                html += `</tbody></table>`;
+            }
+            else if(currentReport === 'upcoming') {
+                const filtered = rawData.bookings;
+                html = `<table class="modern-table" id="pdfTable"><thead><tr><th>Date & Time</th><th>Client</th><th>Mobile</th><th>Vehicle</th><th>Status</th></tr></thead><tbody>`;
+                filtered.forEach(b => { html += `<tr><td>${formatDate(b[1])}<br><span class="badge badge-blue">${formatSafeTime(b[2])}</span></td><td>${b[3]}</td><td>${b[4]}</td><td>${b[5]}<br><small>${b[6]}</small></td><td>${getStatusBadge(b[7])}</td></tr>`; });
+                html += `</tbody></table>`;
+            }
+
+            document.getElementById('reportOutput').innerHTML = html;
+            document.getElementById('totalDisplay').innerText = `Total: ₹${total.toLocaleString('en-IN')}`;
+        }
+
+        function renderChart(rev, exp) {
+            const ctx = document.getElementById('masterChart').getContext('2d');
+            if(window.myChart) window.myChart.destroy();
+            window.myChart = new Chart(ctx, { type: 'doughnut', data: { labels: ['Revenue', 'Expenses'], datasets: [{ data: [rev, exp], backgroundColor: ['#2e7d32', '#c62828'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        }
+
+        // --- MODERN PDF GENERATOR ---
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            // 1. LOGO & HEADER
+            if (logoBase64) {
+                try {
+                    doc.addImage(logoBase64, 'PNG', 14, 10, 25, 25);
+                } catch(e) { console.log("PDF Image Error", e); }
+            }
+
+            // Company Info (Left)
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(18);
+            doc.setTextColor(106, 27, 154);
+            doc.text(companySettings.name || 'Purple Auto Spa', 42, 18);
+
+            doc.setFont("helvetica", "normal");
+            doc.setFontSize(9);
+            doc.setTextColor(100);
+            doc.text(`${companySettings.address1 || ''}, ${companySettings.address2 || ''}`, 42, 24);
+            doc.text(`Contact: ${companySettings.mobile || ''}`, 42, 29);
+
+            // Report Info (Right)
+            const reportNames = { 'datewise': 'LEDGER REPORT', 'client': 'CLIENT HISTORY', 'credit': 'UDHAR LIST', 'pnl': 'P&L STATEMENT', 'expenses': 'EXPENSES', 'salary': 'SALARY BOOK', 'upcoming': 'BOOKINGS' };
+            
+            doc.setFontSize(14);
+            doc.setTextColor(50);
+            doc.text(reportNames[currentReport], 196, 18, { align: 'right' });
+            doc.setFontSize(9);
+            doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 24, { align: 'right' });
+
+            doc.setDrawColor(200);
+            doc.line(14, 38, 196, 38);
+
+            // 2. P&L SUMMARY BOX
+            let startY = 45;
+            if(currentReport === 'pnl') {
+                doc.setDrawColor(220); doc.setFillColor(250, 250, 250);
+                doc.roundedRect(14, 45, 182, 20, 3, 3, 'FD');
+                
+                doc.setFontSize(11);
+                doc.setTextColor(46, 125, 50); doc.text(`REVENUE: Rs. ${pnlStats.revenue}`, 25, 58);
+                doc.setTextColor(198, 40, 40); doc.text(`EXPENSE: Rs. ${pnlStats.expense}`, 85, 58);
+                const netColor = pnlStats.profit >= 0 ? [46, 125, 50] : [198, 40, 40];
+                doc.setTextColor(netColor[0], netColor[1], netColor[2]);
+                doc.setFont("helvetica", "bold");
+                doc.text(`NET PROFIT: Rs. ${pnlStats.profit}`, 145, 58);
+                startY = 75;
+            }
+
+            // 3. TABLE WITH SYMBOL FIX ('₹' -> 'Rs.')
+            if(document.getElementById('pdfTable')) {
+                doc.autoTable({
+                    html: '#pdfTable',
+                    startY: startY,
+                    theme: 'grid',
+                    headStyles: { fillColor: [106, 27, 154], textColor: 255, fontStyle: 'bold' },
+                    styles: { fontSize: 9, cellPadding: 3, textColor: 50 },
+                    alternateRowStyles: { fillColor: [249, 245, 255] },
+                    // --- FIX FOR RUPEE SYMBOL ---
+                    didParseCell: function(data) {
+                        if (data.cell.raw && typeof data.cell.text === 'object') {
+                            data.cell.text = data.cell.text.map(t => t.replace(/₹/g, 'Rs. '));
+                        }
+                    }
+                });
+            }
+
+            // 4. FOOTER
+            const pageCount = doc.internal.getNumberOfPages();
+            for(let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150);
+                doc.text(`Page ${i} of ${pageCount}`, 196, 290, { align: 'right' });
+                doc.text("System Generated Report", 14, 290);
+            }
+
+            // --- FILENAME WITH DATE/TIME/SECONDS ---
+            const d = new Date();
+            const timeStr = `${d.getDate()}-${d.getMonth()+1}-${d.getFullYear()}_${d.getHours()}-${d.getMinutes()}-${d.getSeconds()}`;
+            doc.save(`${currentReport}_Report_${timeStr}.pdf`);
+        }
+    </script>
+</body>
+</html>

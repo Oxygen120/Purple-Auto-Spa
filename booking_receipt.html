@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Receipt</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background: #f0f0f0; font-family: sans-serif; }
+        .receipt-container {
+            max-width: 400px; margin: 20px auto; background: white;
+            padding: 30px 20px; border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.1); text-align: center;
+        }
+        .logo { width: 80px; margin-bottom: 10px; }
+        .success-icon { font-size: 50px; color: #27ae60; margin-bottom: 15px; }
+        .r-header { border-bottom: 2px dashed #ddd; padding-bottom: 15px; margin-bottom: 15px; }
+        .r-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; color: #555; }
+        .r-val { font-weight: bold; color: #000; }
+        .btn-print {
+            background: #6A1B9A; color: white; border: none; padding: 12px;
+            width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 20px;
+        }
+        @media print {
+            body { background: white; }
+            .receipt-container { box-shadow: none; margin: 0; width: 100%; max-width: 100%; }
+            .btn-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="receipt-container" id="receiptCard">
+        <div style="margin-top:20px;">Loading Receipt...</div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+
+    <script>
+        window.onload = async function() {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            const urlDate = params.get('date');
+
+            // Agar URL me Data hai (Instant Load)
+            if(id && urlDate) {
+                renderReceipt({
+                    id: id,
+                    date: params.get('date'),
+                    time: params.get('time'),
+                    client: params.get('client'),
+                    vehicle: params.get('veh'),
+                    status: 'Confirmed'
+                });
+            } 
+            // Agar Server se lana hai
+            else if (id) {
+                try {
+                    const res = await apiRequest('getBookings');
+                    if(res.status === 'success') {
+                        const b = res.data.find(x => String(x[0]) === String(id));
+                        if(b) {
+                            renderReceipt({
+                                id: b[0],
+                                date: b[1],
+                                time: b[2],
+                                client: b[3],
+                                vehicle: b[5],
+                                status: b[7]
+                            });
+                        } else { document.getElementById('receiptCard').innerHTML = "Booking Not Found"; }
+                    }
+                } catch(e) { document.getElementById('receiptCard').innerHTML = "Error fetching data"; }
+            } else { document.getElementById('receiptCard').innerHTML = "Invalid ID"; }
+        };
+
+        async function renderReceipt(data) {
+            let company = { name: 'Purple Auto Spa', address: 'City Center', mobile: '' };
+            try {
+                const s = await apiRequest('getSettings');
+                if(s.status === 'success') {
+                    company.name = s.data.name;
+                    company.address = s.data.address1 + ", " + s.data.address2;
+                    company.mobile = s.data.mobile;
+                }
+            } catch(e) {}
+
+            const dateStr = formatDate(data.date);
+            const timeStr = extractTime(data.time); // FIX IS HERE
+
+            document.getElementById('receiptCard').innerHTML = `
+                <img src="assets/logo.png" class="logo">
+                <h2 style="color:#6A1B9A; margin:0;">${company.name}</h2>
+                <p style="font-size:12px; color:#777;">${company.address}</p>
+                
+                <div class="r-header" style="margin-top:20px;">
+                    <i class="fas fa-check-circle success-icon"></i>
+                    <h3>Appointment ${data.status}</h3>
+                    <div style="font-size:12px; color:#777;">ID: ${data.id}</div>
+                </div>
+
+                <div class="r-row"><span>Date:</span> <span class="r-val">${dateStr}</span></div>
+                <div class="r-row"><span>Time:</span> <span class="r-val">${timeStr}</span></div>
+                <div class="r-row"><span>Client:</span> <span class="r-val">${data.client}</span></div>
+                <div class="r-row"><span>Vehicle:</span> <span class="r-val">${data.vehicle}</span></div>
+                <div class="r-row"><span>Status:</span> <span class="r-val" style="color:#27ae60;">${data.status}</span></div>
+
+                <div style="margin-top:30px; font-size:11px; color:#999;">
+                    Please arrive 10 minutes early. <br>
+                    Contact: +91 ${company.mobile}
+                </div>
+
+                <button class="btn-print" onclick="window.print()">Download / Print</button>
+                <button class="btn-print" style="background:#ddd; color:#333; margin-top:10px;" onclick="window.close()">Close</button>
+            `;
+        }
+
+        // --- REGEX TIME FIXER (Sabse Solid Solution) ---
+        function extractTime(val) {
+            if(!val) return '';
+            const s = String(val);
+            // "14:30" dhoondho chahe wo "1899-12-30T14:30:00" ke andar ho
+            const match = s.match(/(\d{1,2}):(\d{2})/);
+            
+            if(match) {
+                let h = parseInt(match[1]);
+                let m = match[2];
+                let ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12; h = h ? h : 12;
+                return `${h}:${m} ${ampm}`;
+            }
+            return s; 
+        }
+    </script>
+</body>
+</html>
+

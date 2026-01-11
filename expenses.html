@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Expenses - Purple Auto Spa</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        .exp-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; background: white; border-radius: 12px; margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.03); border-left: 4px solid transparent;
+        }
+        .exp-date { font-size: 11px; color: #888; margin-bottom: 2px; }
+        .exp-name { font-weight: 600; font-size: 14px; color: #333; }
+        .exp-cat { 
+            font-size: 10px; padding: 3px 8px; border-radius: 10px; 
+            background: #eee; color: #555; margin-left: 5px; 
+        }
+        .exp-amt { font-weight: 700; color: #c0392b; font-size: 15px; }
+
+        /* Category Specific Border Colors */
+        .type-Inventory { border-left-color: #9C27B0; }
+        .type-Salary { border-left-color: #27ae60; }
+        .type-Rent { border-left-color: #E91E63; }
+        .type-Other { border-left-color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+            <span style="font-size:18px; font-weight:600;">Manage Expenses</span>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+
+        <div class="form-card">
+            <h3 style="margin-bottom:15px; font-size:16px;">Add New Expense</h3>
+            
+            <div class="form-group">
+                <label class="form-label">Expense Name</label>
+                <input type="text" id="expName" class="form-control" placeholder="e.g. Shampoo Bottles, Electricity Bill">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select id="expType" class="form-control">
+                    <option value="Inventory">Inventory / Material</option>
+                    <option value="Rent">Shop Rent</option>
+                    <option value="Utilities">Electricity / Water</option>
+                    <option value="Maintenance">Repairs & Maintenance</option>
+                    <option value="Marketing">Marketing / Ads</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Amount (₹)</label>
+                <input type="number" id="expAmount" class="form-control" placeholder="0.00">
+            </div>
+
+            <button class="btn-main" onclick="addExpense()">
+                <i class="fas fa-plus"></i> Add Expense
+            </button>
+        </div>
+
+        <h3 style="font-size:16px; margin: 20px 0 10px 10px; color:#555;">Recent Transactions</h3>
+        
+        <div id="expenseList">
+            <div style="text-align:center; padding:30px; color:#999;">Loading...</div>
+        </div>
+
+        <div class="pagination" id="paginationControls">
+            <div class="page-btn" onclick="changePage(-1)"><i class="fas fa-chevron-left"></i></div>
+            <span id="pageIndicator" style="display:flex; align-items:center; font-weight:600; font-size:14px; color:#555;">Page 1</span>
+            <div class="page-btn" onclick="changePage(1)"><i class="fas fa-chevron-right"></i></div>
+        </div>
+
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+
+    <script>
+        checkAuth();
+
+        let allExpenses = [];
+        let currentPage = 1;
+        const itemsPerPage = 5;
+
+        window.onload = function() {
+            loadExpenses();
+        };
+
+        async function loadExpenses() {
+            const container = document.getElementById('expenseList');
+            container.innerHTML = '<div style="text-align:center; padding:30px; color:#999;">Loading...</div>';
+
+            const res = await apiRequest('getExpenses');
+            if(res.status === 'success') {
+                // Reverse to show latest first
+                allExpenses = res.expenses.reverse();
+                renderList();
+            } else {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:red;">Failed to load.</div>';
+            }
+        }
+
+        // --- UPDATED ADD FUNCTION (With Safety Lock) ---
+        async function addExpense() {
+            const name = document.getElementById('expName').value;
+            const type = document.getElementById('expType').value;
+            const amount = document.getElementById('expAmount').value;
+
+            if(!name || !amount) {
+                showToast("Please enter Name and Amount", "error");
+                return;
+            }
+
+            const btn = document.querySelector('.btn-main');
+            const originalText = btn.innerHTML; // Save original icon/text
+            
+            try {
+                // 1. Show Loading
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                btn.disabled = true;
+
+                const user = getSession();
+
+                // 2. Call API
+                const res = await apiRequest('addExpense', {
+                    item: name,
+                    type: type,
+                    amount: amount,
+                    addedBy: user ? user.name : 'Admin'
+                });
+
+                // 3. Handle Result
+                if(res.status === 'success') {
+                    showToast("Expense Added Successfully", "success");
+                    // Reset Form
+                    document.getElementById('expName').value = '';
+                    document.getElementById('expAmount').value = '';
+                    // Reload List
+                    loadExpenses();
+                } else {
+                    showToast(res.message || "Failed to add expense", "error");
+                }
+            } catch (error) {
+                console.error("Add Expense Error:", error);
+                showToast("Network Error: Could not save", "error");
+            } finally {
+                // 4. ALWAYS Reset Button (Chahe error ho ya success)
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+
+        function renderList() {
+            const container = document.getElementById('expenseList');
+            
+            if(!allExpenses || allExpenses.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#999;">No expenses recorded yet.</div>';
+                document.getElementById('paginationControls').style.display = 'none';
+                return;
+            }
+
+            // Pagination Logic
+            const totalPages = Math.ceil(allExpenses.length / itemsPerPage);
+            if(currentPage > totalPages) currentPage = 1;
+
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageData = allExpenses.slice(start, end);
+
+            document.getElementById('paginationControls').style.display = 'flex';
+            document.getElementById('pageIndicator').innerText = `Page ${currentPage} of ${totalPages}`;
+
+            container.innerHTML = '';
+            pageData.forEach(exp => {
+                const typeClass = `type-${exp.type}`;
+                const dateStr = formatDate(exp.date);
+
+                container.innerHTML += `
+                    <div class="exp-item ${typeClass}">
+                        <div>
+                            <div class="exp-date">${dateStr}</div>
+                            <div class="exp-name">
+                                ${exp.item} 
+                                <span class="exp-cat">${exp.type}</span>
+                            </div>
+                        </div>
+                        <div class="exp-amt">- ₹${exp.amount}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function changePage(dir) {
+            const totalPages = Math.ceil(allExpenses.length / itemsPerPage);
+            if(dir === 1 && currentPage < totalPages) currentPage++;
+            if(dir === -1 && currentPage > 1) currentPage--;
+            renderList();
+        }
+
+    </script>
+</body>
+</html>
+

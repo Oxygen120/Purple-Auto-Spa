@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Staff Dashboard - Purple Auto Spa</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        /* --- NEW STATS CARDS CSS --- */
+        .stats-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            flex: 1;
+            background: white;
+            padding: 15px 10px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .stat-card:active { transform: scale(0.95); }
+        
+        .stat-icon { font-size: 20px; margin-bottom: 5px; }
+        .stat-num { font-size: 22px; font-weight: 800; color: #333; display: block; margin-top: 5px; }
+        .stat-label { font-size: 11px; color: #777; font-weight: 600; text-transform: uppercase; }
+
+        /* Colors for Cards */
+        .sc-blue .stat-icon { color: #1565c0; }
+        .sc-purple .stat-icon { color: #6A1B9A; }
+        .sc-green .stat-icon { color: #27ae60; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <img src="assets/logo.png" alt="Logo" class="header-logo">
+        <button class="logout-btn" onclick="confirmLogout()">
+            <i class="fas fa-power-off"></i> Logout
+        </button>
+    </div>
+
+    <div class="dashboard-container">
+        
+        <div class="welcome-section">
+            <h2 class="welcome-text" id="welcomeMsg">Welcome, Staff</h2>
+            <p class="welcome-sub">Let's make cars shine today!</p>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card sc-blue" onclick="window.location.href='active_jobs.html'">
+                <i class="fas fa-car stat-icon"></i>
+                <span class="stat-num" id="statActive">0</span>
+                <span class="stat-label">In Workshop</span>
+            </div>
+
+            <div class="stat-card sc-purple" onclick="window.location.href='bookings.html'">
+                <i class="fas fa-calendar-alt stat-icon"></i>
+                <span class="stat-num" id="statBookings">0</span>
+                <span class="stat-label">Appointments</span>
+            </div>
+
+            <div class="stat-card sc-green">
+                <i class="fas fa-clock stat-icon"></i>
+                <span class="stat-num" id="statDate">--</span>
+                <span class="stat-label">Today</span>
+            </div>
+        </div>
+        <div class="tiles-grid">
+            <div class="tile tile-job" onclick="window.location.href='new_job.html'">
+                <i class="fas fa-plus-circle"></i>
+                <span>New Job</span>
+            </div>
+            
+            <div class="tile tile-job" style="border-color:#1565c0;" onclick="window.location.href='active_jobs.html'">
+                <i class="fas fa-car" style="color:#1565c0;"></i>
+                <span>Active Jobs</span>
+            </div>
+
+            <div class="tile tile-book" onclick="window.location.href='bookings.html'">
+                <i class="fas fa-calendar-check"></i>
+                <span>Bookings</span>
+            </div>
+
+            <div class="tile" style="border-color:#FF9800;" onclick="window.location.href='myspace.html'">
+                <i class="fas fa-user-astronaut" style="color:#FF9800;"></i>
+                <span>My Space</span>
+            </div>
+        </div>
+
+        <div class="workshop-live">
+            <div class="live-header">
+                <div class="live-dot"></div> WORKSHOP LIVE
+            </div>
+            <div class="live-scroll-window">
+                <div class="live-scroll-content" id="tickerContent">
+                    <div class="live-item" style="justify-content:center;">Connecting to workshop...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+
+    <script>
+        window.onload = async function() {
+
+            // 1. Golden Name Logic
+            const savedName = localStorage.getItem('userName');
+            const welcomeEl = document.getElementById('welcomeMsg');
+
+            if (welcomeEl && savedName && savedName !== 'undefined') {
+                welcomeEl.innerHTML = `Welcome, <span style="color:#FFD700;">${savedName}</span>`;
+            }
+
+            // 2. Set Today's Date in the 3rd Card
+            const today = new Date();
+            const dateStr = today.getDate() + ' ' + today.toLocaleString('default', { month: 'short' });
+            document.getElementById('statDate').innerText = dateStr;
+
+            // 3. Security Check
+            if(typeof checkAuth === 'function') {
+                checkAuth('Staff'); 
+            }
+
+            // 4. Load Data
+            loadLiveStatus();
+        };
+
+        async function loadLiveStatus() {
+            const res = await apiRequest('getDashboard');
+            
+            if(res.status === 'success') {
+                // --- UPDATE STATS CARDS ---
+                // Active Jobs ka count
+                document.getElementById('statActive').innerText = res.activeJobs.length || 0;
+                // Upcoming Bookings ka count
+                document.getElementById('statBookings').innerText = res.upcomingBookings.length || 0;
+                
+                // Ticker Update
+                updateTicker(res.activeJobs, res.upcomingBookings);
+            }
+        }
+
+        // --- WORKSHOP LIVE TICKER ---
+function updateTicker(liveJobs, upcoming) {
+    const container = document.getElementById('tickerContent');
+    let html = '';
+
+    if (liveJobs.length === 0 && upcoming.length === 0) {
+        html = '<div class="live-item" style="justify-content:center;">No Active Jobs or Bookings</div>';
+    } else {
+        // 1. ACTIVE JOBS (Vehicle + Client Name)
+        liveJobs.forEach(j => {
+            html += `
+                <div class="live-item">
+                    <div>
+                        <span>🚗 <strong>${j.vehicle}</strong></span>
+                        <span style="font-size:11px; color:#777; margin-left:5px;">(${j.client || 'Client'})</span>
+                    </div>
+                    <span class="live-badge lb-wash">${j.status}</span>
+                </div>`;
+        });
+
+        // 2. BOOKINGS (Client + Date + Time)
+        upcoming.forEach(b => {
+            // Date Formatting (e.g., 12 Jan)
+            let dateStr = "";
+            try {
+                let d = new Date(b.date);
+                dateStr = d.toLocaleDateString('en-IN', {day:'numeric', month:'short'});
+            } catch(e) { dateStr = "Date"; }
+
+            html += `
+                <div class="live-item">
+                    <div>
+                        <span>📅 <strong>${b.client}</strong></span>
+                        <span style="font-size:11px; color:#777; margin-left:5px;">${dateStr}</span>
+                    </div>
+                    <span class="live-badge lb-book">${formatTime12(b.time)}</span>
+                </div>`;
+        });
+    }
+    
+   
+    container.innerHTML = html; 
+}
+
+
+        async function confirmLogout() {
+            const yes = await showConfirm("Logout?", "Are you sure you want to exit?");
+            if(yes) logout();
+        }
+    </script>
+</body>
+</html>
+

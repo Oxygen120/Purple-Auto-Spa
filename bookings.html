@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bookings - Purple Auto Spa</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        /* Tabs */
+        .tab-nav { display: flex; background: white; padding: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .tab-btn { flex: 1; text-align: center; padding: 10px; font-weight: 600; color: #777; border-bottom: 3px solid transparent; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { color: #6A1B9A; border-color: #6A1B9A; }
+
+        /* Purple Modal */
+        .custom-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+        }
+        .custom-modal {
+            background: white; width: 90%; max-width: 320px;
+            border-radius: 15px; padding: 20px; text-align: center;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3); animation: popIn 0.3s ease;
+        }
+        @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .modal-icon { font-size: 40px; color: #6A1B9A; margin-bottom: 10px; }
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 5px; color: #333; }
+        .modal-text { font-size: 14px; color: #666; margin-bottom: 20px; }
+        .modal-btns { display: flex; gap: 10px; }
+        .modal-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-modal-cancel { background: #f0f0f0; color: #333; }
+        .btn-modal-confirm { background: #6A1B9A; color: white; }
+        .btn-modal-danger { background: #c0392b; color: white; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+            
+            <span style="font-size:18px; font-weight:600;">Appointments</span>
+        </div>
+    </div>
+
+    <div class="tab-nav">
+        <div class="tab-btn active" id="tab-upcoming" onclick="switchTab('upcoming')">Upcoming</div>
+        <div class="tab-btn" id="tab-history" onclick="switchTab('history')">History / Cancelled</div>
+    </div>
+
+    <div class="dashboard-container" style="padding-top:0;">
+
+        <div id="newBookingSection" class="form-card">
+            <h3 style="margin-bottom:15px; font-size:16px;">New Appointment</h3>
+            
+            <div style="display:flex; gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Date</label>
+                    <input type="date" id="bkDate" class="form-control">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label class="form-label">Time</label>
+                    <input type="time" id="bkTime" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <input type="text" id="bkClient" class="form-control" placeholder="Client Name">
+            </div>
+            
+            <div class="form-group">
+                <input type="number" id="bkMobile" class="form-control" placeholder="Mobile Number"
+                       oninput="if(this.value.length > 10) this.value = this.value.slice(0, 10)">
+            </div>
+
+            <div class="form-group">
+                <input type="text" id="bkVehicle" class="form-control" placeholder="Vehicle Name"
+                       oninput="this.value = this.value.toUpperCase()">
+            </div>
+
+            <button class="btn-main" onclick="createBooking()"><i class="fas fa-calendar-check"></i> Confirm Booking</button>
+        </div>
+        <div id="bookingList">
+            <div style="text-align:center; padding:30px; color:#999;">Loading...</div>
+        </div>
+
+        <div class="pagination" id="paginationControls" style="display:none;">
+            <div class="page-btn" onclick="changePage(-1)"><i class="fas fa-chevron-left"></i></div>
+            <span id="pageIndicator" style="display:flex; align-items:center; font-weight:600; font-size:14px; color:#555;">Page 1</span>
+            <div class="page-btn" onclick="changePage(1)"><i class="fas fa-chevron-right"></i></div>
+        </div>
+
+    </div>
+
+    <div id="purpleModal" class="custom-modal-overlay">
+        <div class="custom-modal">
+            <div class="modal-icon"><i class="fas fa-info-circle"></i></div>
+            <div class="modal-title" id="modalTitle">Confirm</div>
+            <div class="modal-text" id="modalText">Are you sure?</div>
+            <div class="modal-btns">
+                <button class="modal-btn btn-modal-cancel" onclick="closeModal()">No</button>
+                <button class="modal-btn btn-modal-confirm" id="modalYesBtn">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+
+    <script>
+        checkAuth();
+
+        let allBookings = [];
+        let currentTab = 'upcoming';
+        let currentPage = 1;
+        const itemsPerPage = 5;
+
+        // Modal Variables
+        let actionType = null;
+        let selectedId = null;
+
+        // --- FIXED: MERGED WINDOW.ONLOAD (Pehle 2 alag-alag the) ---
+        window.onload = async function() {
+            // 1. Date Logic
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            const dInput = document.getElementById('bkDate');
+            if(dInput) {
+                dInput.value = todayStr;
+                dInput.setAttribute('min', todayStr);
+            }
+
+            // 2. Load Data
+            fetchBookings();
+            
+            // 3. Load Settings (Agar function available hai)
+            if(typeof loadCompanyDetails === 'function') {
+                loadCompanyDetails();
+            }
+        };
+
+        // --- 1. FETCH ---
+        async function fetchBookings() {
+            const container = document.getElementById('bookingList');
+            container.innerHTML = '<div style="text-align:center; padding:20px; color:#666;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+            try {
+                const response = await apiRequest('getBookings');
+                if (response.status === 'success') {
+                    allBookings = response.data;
+                    currentPage = 1;
+                    renderBookings();
+                } else {
+                    container.innerHTML = '<div style="text-align:center; color:red;">Failed to load data.</div>';
+                }
+            } catch (e) {
+                container.innerHTML = '<div style="text-align:center; color:red;">Network Error.</div>';
+            }
+        }
+
+        // --- 2. RENDER & PAGINATION ---
+        function renderBookings() {
+            const container = document.getElementById('bookingList');
+            const pagControls = document.getElementById('paginationControls');
+            container.innerHTML = '';
+
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            // Filter
+            const filtered = allBookings.filter(b => {
+                const bDate = new Date(b[1]);
+                if (currentTab === 'upcoming') {
+                    return (bDate >= today && b[7] === 'Open');
+                } else {
+                    return (bDate < today || b[7] !== 'Open');
+                }
+            });
+
+            // Sort
+            filtered.sort((a, b) => {
+                const d1 = new Date(a[1]); const d2 = new Date(b[1]);
+                return currentTab === 'upcoming' ? d1 - d2 : d2 - d1;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding:40px; color:#999;">No ${currentTab} bookings found.</div>`;
+                pagControls.style.display = 'none';
+                return;
+            }
+
+            // Pagination Slicing
+            const totalPages = Math.ceil(filtered.length / itemsPerPage);
+            if(currentPage > totalPages) currentPage = 1;
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageData = filtered.slice(start, end);
+
+            pagControls.style.display = 'flex';
+            document.getElementById('pageIndicator').innerText = `Page ${currentPage} of ${totalPages}`;
+
+            // Render
+            pageData.forEach(b => {
+                const id = b[0];
+                const dateStr = formatDate(b[1]);
+                const timeStr = extractTime(b[2]); 
+                const client = b[3];
+                const mobile = b[4];
+                const veh = b[5];
+                const status = b[7];
+
+                let statusColor = '#f39c12';
+                if(status === 'Completed') statusColor = '#27ae60';
+                if(status === 'Cancelled') statusColor = '#c0392b';
+
+                let actionHtml = '';
+                if(currentTab === 'upcoming') {
+                    actionHtml = `
+                        <button class="action-btn btn-finish" onclick="convertToJob('${id}')">
+                            <i class="fas fa-arrow-right"></i> Start Job
+                        </button>
+                        <button class="action-btn btn-cancel" onclick="triggerAction('cancel', '${id}')" style="background:#c0392b; color:white;">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    `;
+                } else {
+                    actionHtml = `<span style="font-size:12px; color:${statusColor}; font-weight:bold;">${status}</span>`;
+                }
+
+                container.innerHTML += `
+                    <div class="job-card" style="border-left: 4px solid ${statusColor};">
+                        <div class="menu-wrapper">
+                            <button class="menu-btn" onclick="toggleMenu(this)"><i class="fas fa-ellipsis-v"></i></button>
+                            <div class="menu-dropdown">
+                                <button class="menu-item" onclick="window.location.href='tel:${mobile}'"><i class="fas fa-phone"></i> Call</button>
+                                <button class="menu-item" onclick="openWhatsApp('${mobile}', '${client}', '${dateStr} ${timeStr}')"><i class="fab fa-whatsapp"></i> WhatsApp</button>
+                                ${currentTab === 'upcoming' ? `<button class="menu-item danger" onclick="triggerAction('delete', '${id}')"><i class="fas fa-trash"></i> Delete</button>` : ''}
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+                            <span style="font-weight:bold; font-size:16px;">${timeStr}</span>
+                            <span style="font-size:12px; background:#f0f0f0; padding:2px 8px; border-radius:10px;">${dateStr}</span>
+                        </div>
+                        <div style="font-size:14px; font-weight:600; margin-bottom:2px;">${veh}</div>
+                        <div style="font-size:13px; color:#555; margin-bottom:10px;">
+                            <i class="fas fa-user"></i> ${client} <small>(${mobile})</small>
+                        </div>
+                        <div class="job-actions">${actionHtml}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function extractTime(val) {
+            if(!val) return '';
+            const s = String(val);
+            const match = s.match(/(\d{1,2}):(\d{2})/);
+            if(match) {
+                let h = parseInt(match[1]);
+                let m = match[2];
+                let ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12; h = h ? h : 12;
+                return `${h}:${m} ${ampm}`;
+            }
+            return s; 
+        }
+
+        // --- MODAL LOGIC ---
+        function triggerAction(type, id) {
+            actionType = type;
+            selectedId = id;
+            const modal = document.getElementById('purpleModal');
+            const title = document.getElementById('modalTitle');
+            const text = document.getElementById('modalText');
+            const btn = document.getElementById('modalYesBtn');
+
+            modal.style.display = 'flex';
+            if(type === 'delete') {
+                title.innerText = 'Delete Booking?';
+                text.innerText = 'This action cannot be undone.';
+                btn.className = 'modal-btn btn-modal-danger';
+            } else {
+                title.innerText = 'Cancel Booking?';
+                text.innerText = 'Mark this appointment as Cancelled?';
+                btn.className = 'modal-btn btn-modal-danger';
+            }
+            btn.onclick = confirmAction;
+        }
+
+        function closeModal() {
+            document.getElementById('purpleModal').style.display = 'none';
+        }
+
+        async function confirmAction() {
+            closeModal();
+            const res = await apiRequest('deleteBooking', { id: selectedId });
+            if(res.status === 'success') {
+                showToast(actionType === 'delete' ? "Deleted!" : "Cancelled!", "success");
+                fetchBookings();
+            } else {
+                showToast("Action Failed", "error");
+            }
+        }
+
+        function convertToJob(bkId) {
+            const booking = allBookings.find(b => b[0] == bkId);
+            if(booking) {
+                const client = encodeURIComponent(booking[3] || '');
+                const mobile = encodeURIComponent(booking[4] || '');
+                const veh = encodeURIComponent(booking[5] || '');
+                window.location.href = `new_job.html?bookingId=${bkId}&client=${client}&mobile=${mobile}&veh=${veh}`;
+            } else {
+                showToast("Data Missing", "error");
+            }
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            currentPage = 1; 
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            if(tab === 'upcoming') document.getElementById('tab-upcoming').classList.add('active');
+            else document.getElementById('tab-history').classList.add('active');
+            renderBookings();
+        }
+
+        function changePage(dir) {
+            if(dir === 1) currentPage++;
+            if(dir === -1 && currentPage > 1) currentPage--;
+            renderBookings();
+        }
+
+        async function createBooking() {
+            const date = document.getElementById('bkDate').value;
+            const time = document.getElementById('bkTime').value;
+            const client = document.getElementById('bkClient').value;
+            const mobile = document.getElementById('bkMobile').value;
+            const veh = document.getElementById('bkVehicle').value;
+
+            if(!date || !time || !client || !mobile) { showToast("Please fill all details", "error"); return; }
+            
+            // Validate Time & Date
+            const timeError = validateTime(date, time);
+            if(timeError) { showToast(timeError, "error"); return; }
+            
+            // Validate Mobile
+            if (mobile.length !== 10) { showToast("Mobile must be 10 digits", "error"); return; }
+
+            const btn = document.querySelector('.btn-main');
+            btn.innerHTML = 'Processing...'; btn.disabled = true;
+
+            const res = await apiRequest('createBooking', { date, time, client, mobile, vehicle: veh, vehicleNo: '' });
+            if(res.status === 'success') {
+                showToast("Confirmed!", "success");
+                document.getElementById('bkClient').value = '';
+                document.getElementById('bkMobile').value = '';
+                document.getElementById('bkVehicle').value = '';
+                fetchBookings();
+            } else { showToast("Error", "error"); }
+            btn.innerHTML = '<i class="fas fa-calendar-check"></i> Confirm Booking'; btn.disabled = false;
+        }
+
+        function toggleMenu(btn) {
+            event.stopPropagation();
+            document.querySelectorAll('.menu-dropdown').forEach(d => d.classList.remove('show'));
+            btn.nextElementSibling.classList.toggle('show');
+        }
+        window.onclick = function(e) {
+            if (!e.target.closest('.menu-wrapper')) document.querySelectorAll('.menu-dropdown').forEach(d => d.classList.remove('show'));
+        };
+        function openWhatsApp(mob, name, time) {
+            window.open(`https://wa.me/91${mob}?text=Hello ${name}, appointment confirmed for ${time}`, '_blank');
+        }
+
+        // --- VALIDATIONS ---
+        function validateTime(dateVal, timeVal) {
+            if (!timeVal) return "Please select time";
+            const selDate = new Date(dateVal);
+            const today = new Date();
+            today.setHours(0,0,0,0); selDate.setHours(0,0,0,0);
+            if (selDate < today) return "Cannot book for a past date.";
+            const [h, m] = timeVal.split(':').map(Number);
+            if (h < 9 || h >= 18) return "Shop is open from 9:00 AM to 6:00 PM only.";
+            if (selDate.getTime() === today.getTime()) {
+                const nowH = new Date().getHours();
+                const nowM = new Date().getMinutes();
+                if (h < nowH || (h === nowH && m < nowM)) return "Cannot book for past time.";
+            }
+            return null;
+        }
+
+        // --- SMART VEHICLE NUMBER FORMATTER (Booking page pe number nahi mangte, par format function rakha hai future ke liye) ---
+        function formatVehicleNo(input) {
+            let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            let formatted = '';
+            if (val.length > 0) formatted = val.substring(0, 2);
+            if (val.length > 2) formatted += ' ' + val.substring(2, 4);
+            if (val.length > 4) {
+                let remaining = val.substring(4);
+                if (remaining.length > 4) {
+                     let series = remaining.substring(0, remaining.length - 4);
+                     let number = remaining.substring(remaining.length - 4);
+                     formatted += ' ' + series + ' ' + number;
+                } else {
+                     formatted += ' ' + remaining;
+                }
+            }
+            input.value = formatted;
+        }
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,401 @@
+/* =========================================
+   PURPLE AUTO SPA - MAIN STYLESHEET
+   Theme: Purple Minimal Modern
+   ========================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
+
+:root {
+    /* --- COLOR PALETTE --- */
+    --primary: #6A1B9A;        /* Deep Purple (Brand Color) */
+    --primary-dark: #4A148C;   /* Darker Purple */
+    --primary-light: #9c4dcc;  /* Lighter Purple */
+    --accent-bg: #F3E5F5;      /* Light Lavender Background */
+    
+    --text-main: #2c3e50;      /* Dark Grey Text */
+    --text-light: #7f8c8d;     /* Light Grey Text */
+    --white: #ffffff;
+    
+    --bg-body: #f4f6f8;        /* App Background */
+    --card-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    
+    /* --- STATUS COLORS --- */
+    --success: #27ae60;        /* Green (Paid/Present) */
+    --warning: #f39c12;        /* Orange (Pending) */
+    --danger: #c0392b;         /* Red (Error/Absent/Unpaid) */
+    --info: #2980b9;           /* Blue (Washing) */
+    
+    --radius: 12px;
+}
+
+* {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    padding-bottom: 20px;
+    font-size: 14px;
+}
+
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; }
+button { outline: none; font-family: inherit; }
+
+/* =========================================
+   1. HEADER
+   ========================================= */
+.header {
+    background: var(--white);
+    height: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    position: sticky; top: 0; z-index: 100;
+}
+
+.header-logo { height: 40px; width: auto; }
+
+.logout-btn {
+    color: var(--danger);
+    background: #ffebee;
+    padding: 8px 15px;
+    border-radius: 30px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    transition: 0.3s;
+}
+.logout-btn:active { transform: scale(0.95); }
+
+/* =========================================
+   2. LOGIN PAGE
+   ========================================= */
+.login-container {
+    height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    padding: 20px;
+}
+
+.login-card {
+    background: var(--white);
+    padding: 35px 30px;
+    border-radius: 20px;
+    width: 100%; max-width: 360px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+    animation: slideUp 0.5s ease-out;
+}
+
+.login-logo { width: 90px; margin-bottom: 20px; }
+
+/* =========================================
+   3. DASHBOARD TILES
+   ========================================= */
+.dashboard-container { padding: 20px; max-width: 1000px; margin: 0 auto; }
+
+.welcome-section { margin-bottom: 25px; }
+.welcome-text { color: var(--primary); font-size: 22px; font-weight: 700; margin-bottom: 5px; }
+.welcome-sub { font-size: 13px; color: var(--text-light); }
+
+.tiles-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Mobile: 2 Columns */
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+/* Tablet/Desktop: 4 Columns */
+@media(min-width: 768px) {
+    .tiles-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.tile {
+    background: var(--white);
+    padding: 20px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    border-bottom: 4px solid transparent;
+    position: relative; overflow: hidden;
+}
+.tile:active { transform: scale(0.97); }
+
+/* Tile Colors */
+.tile-job { border-color: #9C27B0; } .tile-job i { color: #9C27B0; font-size: 28px; margin-bottom: 10px; }
+.tile-book { border-color: #009688; } .tile-book i { color: #009688; font-size: 28px; margin-bottom: 10px; }
+.tile-exp { border-color: #E91E63; } .tile-exp i { color: #E91E63; font-size: 28px; margin-bottom: 10px; }
+.tile-rep { border-color: #3F51B5; } .tile-rep i { color: #3F51B5; font-size: 28px; margin-bottom: 10px; }
+
+/* =========================================
+   4. WORKSHOP LIVE (Vertical Auto-Scroll)
+   ========================================= */
+.workshop-live {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 15px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+    border-left: 5px solid var(--success);
+    overflow: hidden;
+}
+
+.live-header {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; color: var(--text-light);
+    margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.live-dot {
+    width: 8px; height: 8px; background: var(--success);
+    border-radius: 50%; animation: blink 1.5s infinite;
+}
+@keyframes blink { 50% { opacity: 0.3; } }
+
+/* Scrolling Container */
+.live-scroll-window {
+    height: 90px; /* Visible Area */
+    overflow: hidden;
+    position: relative;
+}
+
+.live-scroll-content {
+    position: absolute;
+    width: 100%;
+    animation: scrollUp 15s linear infinite; /* Adjusted speed */
+}
+/* Pause on Hover */
+.live-scroll-content:hover { animation-play-state: paused; }
+
+.live-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px dashed #f0f0f0;
+    font-size: 13px; color: #555;
+}
+.live-item strong { color: var(--text-main); font-weight: 600; }
+.live-badge { 
+    padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+}
+.lb-wash { background: #E3F2FD; color: #1565c0; }
+.lb-book { background: #F3E5F5; color: #6A1B9A; }
+
+@keyframes scrollUp {
+    0% { top: 100%; }
+    100% { top: -150%; } /* Move up */
+}
+
+/* =========================================
+   5. FORMS & INPUTS (Modern)
+   ========================================= */
+.form-card {
+    background: var(--white);
+    padding: 25px; border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 20px;
+}
+
+.form-group { margin-bottom: 18px; }
+.form-label { font-size: 12px; color: var(--primary); font-weight: 600; margin-bottom: 6px; display: block; }
+
+.form-control {
+    width: 100%; padding: 14px;
+    border: 1px solid #e0e0e0; border-radius: 10px;
+    font-size: 14px; outline: none; transition: 0.3s;
+    background: #fafafa;
+}
+.form-control:focus { 
+    border-color: var(--primary); 
+    background: #fff; 
+    box-shadow: 0 0 0 4px rgba(106, 27, 154, 0.05);
+}
+
+/* Button Main */
+.btn-main {
+    width: 100%; padding: 15px;
+    background: var(--primary); color: #fff;
+    border: none; border-radius: 12px;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; box-shadow: 0 4px 10px rgba(106, 27, 154, 0.3);
+    transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-main:active { transform: scale(0.98); }
+.btn-main:disabled { background: #ccc; cursor: not-allowed; box-shadow: none; }
+
+/* GST Toggle Switch */
+.gst-wrapper { 
+    display: flex; justify-content: space-between; align-items: center; 
+    background: #f8f9fa; padding: 12px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #eee;
+}
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+    position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #ccc; transition: .4s; border-radius: 34px;
+}
+.slider:before {
+    position: absolute; content: ""; height: 18px; width: 18px;
+    left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%;
+}
+input:checked + .slider { background-color: var(--primary); }
+input:checked + .slider:before { transform: translateX(20px); }
+
+/* =========================================
+   6. JOB LIST & CARDS (Active Jobs)
+   ========================================= */
+.job-card {
+    background: var(--white); margin-bottom: 15px;
+    padding: 18px; border-radius: 16px;
+    box-shadow: var(--card-shadow);
+    border-left: 5px solid var(--primary);
+    position: relative;
+    animation: fadeIn 0.3s ease;
+}
+
+.job-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.job-veh { font-weight: 700; font-size: 16px; color: var(--text-main); }
+.job-status { font-size: 11px; padding: 4px 10px; border-radius: 20px; font-weight: 600; text-transform: uppercase;}
+
+/* Status Colors */
+.st-Pending { background: #FFF3E0; color: #E65100; border-left-color: #E65100; }
+.st-Washing { background: #E3F2FD; color: #1565c0; border-left-color: #1565c0; }
+.st-Completed { background: #E8F5E9; color: #2E7D32; border-left-color: #2E7D32; }
+.st-Delivered { background: #F3E5F5; color: #6A1B9A; border-left-color: #6A1B9A; }
+
+.job-actions {
+    display: flex; gap: 10px; margin-top: 15px; padding-top: 12px; border-top: 1px dashed #eee;
+}
+.action-btn {
+    flex: 1; padding: 10px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s;
+}
+.btn-start { background: #FFF3E0; color: #E65100; }
+.btn-finish { background: #E3F2FD; color: #1565c0; }
+.btn-deliver { background: #E8F5E9; color: #2E7D32; }
+.btn-collect { background: #FFEBEE; color: #C62828; }
+
+/* 3-Dot Menu Dropdown */
+.menu-wrapper { position: absolute; top: 15px; right: 15px; }
+.menu-btn { background: none; border: none; font-size: 18px; color: #bbb; cursor: pointer; padding: 5px; }
+.menu-dropdown {
+    position: absolute; right: 0; top: 30px;
+    background: #fff; width: 160px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+    border-radius: 10px; display: none; z-index: 50; overflow: hidden;
+}
+.menu-dropdown.show { display: block; animation: fadeIn 0.2s; }
+.menu-item {
+    display: block; padding: 12px; width: 100%; text-align: left;
+    background: none; border: none; font-size: 13px; color: #444;
+    border-bottom: 1px solid #f9f9f9; cursor: pointer;
+}
+.menu-item:hover { background: #f5f5f5; }
+.menu-item i { width: 25px; color: var(--primary); text-align: center; }
+.menu-item.danger { color: var(--danger); }
+.menu-item.danger i { color: var(--danger); }
+
+/* =========================================
+   7. CALENDAR VIEW & ATTENDANCE
+   ========================================= */
+.cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 8px; margin-top: 15px;
+}
+.cal-day-header { font-size: 11px; font-weight: bold; text-align: center; color: var(--text-light); text-transform: uppercase; }
+.cal-day {
+    aspect-ratio: 1; background: #fff; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; position: relative; border: 1px solid #f0f0f0; font-weight: 500;
+}
+.cal-present { background: #E8F5E9; color: #2E7D32; border-color: #A5D6A7; }
+.cal-absent { background: #FFEBEE; color: #C62828; border-color: #EF9A9A; }
+.cal-dot { width: 5px; height: 5px; border-radius: 50%; position: absolute; bottom: 4px; }
+
+/* =========================================
+   8. MODERN POPUPS & TOASTS (System Alert Replacement)
+   ========================================= */
+
+/* --- Toast Notification --- */
+.custom-toast {
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-100px);
+    background: #333; color: white; padding: 12px 25px;
+    border-radius: 50px; font-size: 14px; font-weight: 600;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 9999;
+    display: flex; align-items: center; gap: 12px;
+    opacity: 0; transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    min-width: 250px; justify-content: center;
+}
+.custom-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast-success { background: var(--success); }
+.toast-error { background: var(--danger); }
+.toast-info { background: var(--primary); }
+
+/* --- Confirmation Modal --- */
+.modal-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.6); z-index: 9990;
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s;
+}
+.modal-overlay.show { opacity: 1; }
+
+.custom-box {
+    background: white; padding: 30px; width: 90%; max-width: 350px;
+    border-radius: 24px; text-align: center;
+    transform: scale(0.8); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.modal-overlay.show .custom-box { transform: scale(1); }
+
+.box-icon { font-size: 45px; margin-bottom: 20px; display: block; }
+.icon-warn { color: var(--warning); }
+.icon-success { color: var(--success); }
+.icon-danger { color: var(--danger); }
+
+.box-title { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 10px; }
+.box-desc { font-size: 13px; color: #666; margin-bottom: 25px; line-height: 1.5; }
+
+.box-actions { display: flex; gap: 12px; }
+.box-btn { flex: 1; padding: 12px; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px; transition: 0.2s;}
+.btn-cancel { background: #f5f5f5; color: #555; }
+.btn-confirm { background: var(--primary); color: white; box-shadow: 0 4px 10px rgba(106, 27, 154, 0.2); }
+.btn-confirm:active { transform: scale(0.95); }
+
+/* =========================================
+   9. UTILITIES
+   ========================================= */
+/* Pagination */
+.pagination { display: flex; justify-content: center; gap: 15px; margin-top: 20px; margin-bottom: 40px;}
+.page-btn {
+    width: 40px; height: 40px; background: #fff; border: 1px solid #eee;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    color: var(--primary); cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.page-btn.disabled { opacity: 0.4; pointer-events: none; }
+
+/* Ripple Effect */
+.ripple {
+    position: absolute; border-radius: 50%; transform: scale(0);
+    animation: ripple-anim 0.6s linear; background: rgba(255, 255, 255, 0.4);
+    pointer-events: none;
+}
+@keyframes ripple-anim { to { transform: scale(4); opacity: 0; } }
+.btn-main, .tile, .menu-item, .box-btn, .action-btn { position: relative; overflow: hidden; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+/* Print Logic */
+@media print {
+    .header, .no-print, .fab-container, .dashboard-container, .modal-overlay, .custom-toast { display: none !important; }
+}
+

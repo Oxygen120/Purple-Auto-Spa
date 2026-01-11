@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>New Job - Purple Auto Spa</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        .custom-select { position: relative; cursor: pointer; user-select: none; }
+        .select-trigger { background: #fafafa; border: 1px solid #e0e0e0; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #555; }
+        .select-options { display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); z-index: 50; max-height: 200px; overflow-y: auto; margin-top: 5px; }
+        .select-options.open { display: block; animation: fadeIn 0.2s; }
+        .option { padding: 12px; border-bottom: 1px solid #f5f5f5; display: flex; align-items: center; justify-content: space-between; }
+        .option:hover { background: #f9f9f9; }
+        .option input { margin-right: 10px; transform: scale(1.2); accent-color: #6A1B9A; }
+        .service-price { font-weight: bold; color: #6A1B9A; }
+        .calc-box { background: #F3E5F5; padding: 15px; border-radius: 12px; margin-top: 20px; }
+        .calc-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+        .calc-total { border-top: 1px dashed #6A1B9A; padding-top: 10px; margin-top: 5px; font-weight: 700; font-size: 18px; color: #6A1B9A; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div style="display:flex; align-items:center;">
+
+            <span style="font-size:18px; font-weight:600;">Create Job</span>
+        </div>
+    </div>
+
+    <div class="dashboard-container">
+        
+        <div class="form-card">
+            
+            <div class="form-group">
+                <label class="form-label">Client Name</label>
+                <input type="text" id="clientName" class="form-control" placeholder="Enter Name">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Mobile Number</label>
+                <input type="number" id="clientMobile" class="form-control" placeholder="10 Digit Mobile" 
+       oninput="if(this.value.length > 10) this.value = this.value.slice(0, 10)">
+
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Vehicle Name</label>
+                <input type="text" id="vehicleName" class="form-control" placeholder="e.g. SWIFT" 
+       oninput="this.value = this.value.toUpperCase()">
+
+            </div>
+            <div class="form-group">
+                <label class="form-label">Vehicle Number (Optional)</label>
+                <input type="text" id="vehicleNo" class="form-control" placeholder="GJ 08 AA 1111" 
+       oninput="formatVehicleNo(this)" maxlength="13">
+
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Select Services</label>
+                <div class="custom-select" id="serviceDropdown">
+                    <div class="select-trigger" onclick="toggleDropdown()">
+                        <span id="serviceTriggerText">Select Services...</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="select-options" id="serviceListContainer">
+                        <div style="padding:15px; text-align:center;">Loading Services...</div>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="margin: 20px 0; border:0; border-top:1px dashed #ddd;">
+
+            <div class="gst-wrapper">
+                <span style="font-weight:600; font-size:13px;">GST Invoice (Inclusive 18%)</span>
+                <label class="switch">
+                    <input type="checkbox" id="gstToggle" onchange="calculateTotal()">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Discount (₹)</label>
+                <input type="number" id="discountInput" class="form-control" placeholder="0" value="0" onkeyup="calculateTotal()">
+            </div>
+
+            <div class="calc-box">
+                <div class="calc-row"><span>Sub Total</span><span id="dispSubTotal">₹0</span></div>
+                <div class="calc-row"><span>GST <span id="gstStatusText">(OFF)</span></span><span id="dispGstInfo">₹0</span></div>
+                <div class="calc-row"><span>Discount</span><span id="dispDiscount" style="color:var(--danger)">- ₹0</span></div>
+                <div class="calc-row calc-total"><span>Net Payable</span><span id="dispNetPayable">₹0</span></div>
+                <div style="display:none;"><span id="calcBase">0</span><span id="calcGst">0</span></div>
+            </div>
+
+            <br>
+            <button class="btn-main" onclick="createJob()"><i class="fas fa-check-circle"></i> Create Job</button>
+
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+    <script src="assets/js/auth.js"></script>
+
+    <script>
+        checkAuth();
+        let servicesData = [];
+        let selectedServices = [];
+
+        // --- 1. INITIALIZE & POPULATE DATA (THIS IS FIXED) ---
+        window.onload = function() {
+            // Check for data from Booking Page
+            const params = new URLSearchParams(window.location.search);
+            
+            // Check direct keys (client, mobile, veh)
+            if(params.has('client')) document.getElementById('clientName').value = params.get('client');
+            if(params.has('mobile')) document.getElementById('clientMobile').value = params.get('mobile');
+            if(params.has('veh')) document.getElementById('vehicleName').value = params.get('veh');
+            if(params.has('vehNo')) document.getElementById('vehicleNo').value = params.get('vehNo');
+            
+            // Fetch services
+            fetchServicesFromSheet();
+        };
+
+        async function fetchServicesFromSheet() {
+            const container = document.getElementById('serviceListContainer');
+            try {
+                const response = await apiRequest('getServices');
+                if (response.status === 'success' && response.data.length > 0) {
+                    servicesData = response.data;
+                    renderServices(servicesData);
+                } else { container.innerHTML = '<div style="padding:10px; text-align:center; color:red;">No Services</div>'; }
+            } catch (error) { container.innerHTML = '<div style="padding:10px; text-align:center;">Connection Failed</div>'; }
+        }
+
+        function renderServices(list) {
+            const container = document.getElementById('serviceListContainer');
+            container.innerHTML = '';
+            list.forEach((svc, index) => {
+                container.innerHTML += `
+                    <label class="option">
+                        <div style="display:flex; align-items:center;">
+                            <input type="checkbox" class="service-checkbox" value="${index}" onchange="updateSelection()">
+                            <span>${svc.name}</span>
+                        </div>
+                        <span class="service-price">₹${svc.price}</span>
+                    </label>
+                `;
+            });
+        }
+
+        function toggleDropdown() { document.getElementById('serviceListContainer').classList.toggle('open'); }
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('serviceDropdown');
+            if (!dropdown.contains(e.target)) document.getElementById('serviceListContainer').classList.remove('open');
+        });
+
+        function updateSelection() {
+            const checkboxes = document.querySelectorAll('.service-checkbox:checked');
+            selectedServices = [];
+            let labelText = [];
+            checkboxes.forEach(box => {
+                const idx = box.value;
+                selectedServices.push(servicesData[idx]);
+                labelText.push(servicesData[idx].name);
+            });
+            const trigger = document.getElementById('serviceTriggerText');
+            trigger.innerText = labelText.length > 0 ? labelText.join(", ").substring(0, 25) + "..." : "Select Services...";
+            calculateTotal();
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            selectedServices.forEach(s => total += s.price);
+            const discount = parseFloat(document.getElementById('discountInput').value) || 0;
+            let net = total - discount;
+            if (net < 0) net = 0;
+
+            const isGst = document.getElementById('gstToggle').checked;
+            let base = 0, gst = 0;
+
+            if (isGst) {
+                base = net / 1.18;
+                gst = net - base;
+                document.getElementById('gstStatusText').innerText = "(ON)";
+                document.getElementById('dispGstInfo').innerText = "₹" + gst.toFixed(2);
+            } else {
+                base = net;
+                document.getElementById('gstStatusText').innerText = "(OFF)";
+                document.getElementById('dispGstInfo').innerText = "₹0";
+            }
+
+            document.getElementById('dispSubTotal').innerText = "₹" + total;
+            document.getElementById('dispDiscount').innerText = "- ₹" + discount;
+            document.getElementById('dispNetPayable').innerText = "₹" + Math.round(net);
+        }
+
+        async function createJob() {
+            const clientName = document.getElementById('clientName').value;
+            const mobile = document.getElementById('clientMobile').value;
+            const vehicle = document.getElementById('vehicleName').value;
+
+            if(!clientName || !mobile || !vehicle) { showToast("Missing Details", 'error'); return; }
+            if(selectedServices.length === 0) { showToast("Select Service", 'error'); return; }
+
+            const btn = document.querySelector('.btn-main');
+            btn.innerHTML = 'Creating...'; btn.disabled = true;
+            const user = getSession();
+            
+            const jobData = {
+                clientName, mobile, vehicleName: vehicle,
+                vehicleNo: document.getElementById('vehicleNo').value || '',
+                services: selectedServices,
+                total: document.getElementById('dispSubTotal').innerText.replace('₹',''),
+                discount: document.getElementById('discountInput').value || 0,
+                netPayable: document.getElementById('dispNetPayable').innerText.replace('₹',''),
+                gstMode: document.getElementById('gstToggle').checked ? 'ON' : 'OFF',
+                generatedBy: user ? user.name : 'Unknown'
+            };
+
+            const params = new URLSearchParams(window.location.search);
+            if(params.get('bookingId')) jobData.bookingId = params.get('bookingId');
+
+            const response = await apiRequest('createJob', jobData);
+
+            if (response.status === 'success') {
+                showToast("Job Created!", 'success');
+                setTimeout(() => {
+                    const safeId = encodeURIComponent(response.invoiceNo);
+                    window.location.replace(`invoice_view.html?id=${safeId}`);
+                }, 1000);
+            } else {
+                showToast(response.message || "Failed", 'error');
+                btn.innerHTML = '<i class="fas fa-check-circle"></i> Create Job';
+                btn.disabled = false;
+            }
+        }
+
+    // --- SMART VEHICLE NUMBER FORMATTER ---
+    function formatVehicleNo(input) {
+        // 1. Sab bada karo aur faaltu chize hatao
+        let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        let formatted = '';
+
+        if (val.length > 0) {
+            formatted = val.substring(0, 2); // State: GJ
+        }
+        if (val.length > 2) {
+            formatted += ' ' + val.substring(2, 4); // District: 08
+        }
+        if (val.length > 4) {
+            // Series aur Number Logic
+            let remaining = val.substring(4);
+            if (remaining.length > 4) {
+                 // Agar 4 se zyada bache hain, to last 4 number alag karo
+                 let series = remaining.substring(0, remaining.length - 4);
+                 let number = remaining.substring(remaining.length - 4);
+                 formatted += ' ' + series + ' ' + number;
+            } else {
+                 formatted += ' ' + remaining;
+            }
+        }
+        input.value = formatted;
+    }
+
+    </script>
+</body>
+</html>
+

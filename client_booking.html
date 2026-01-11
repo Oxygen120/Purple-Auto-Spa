@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Book Service - Purple Auto Spa</title>
+    
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body { background: #F3E5F5; font-family: sans-serif; }
+        
+        /* UI Styles */
+        .public-container {
+            max-width: 480px; margin: 0 auto; min-height: 100vh;
+            background: white; position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #6A1B9A, #4A148C);
+            padding: 40px 20px; text-align: center; color: white;
+            border-bottom-left-radius: 30px; border-bottom-right-radius: 30px;
+        }
+        .hero-logo { width: 80px; margin-bottom: 10px; background: white; border-radius: 50%; padding: 5px; }
+        .hero-title { font-size: 24px; font-weight: 700; margin-bottom: 5px; }
+        
+        .p-tabs { display: flex; justify-content: center; margin-top: -25px; }
+        .p-tab {
+            background: white; padding: 12px 30px; margin: 0 10px;
+            border-radius: 25px; font-weight: 600; color: #777;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); cursor: pointer; transition: 0.3s;
+        }
+        .p-tab.active { background: #FF9800; color: white; transform: scale(1.05); }
+
+        .content-area { padding: 30px 20px; }
+        .footer-info {
+            text-align: center; padding: 20px; color: #777; font-size: 12px;
+            border-top: 1px solid #eee; margin-top: 20px;
+        }
+
+        .status-result {
+            background: #f9f9f9; padding: 15px; border-radius: 12px;
+            border-left: 5px solid #6A1B9A; margin-top: 15px;
+        }
+        .sr-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 13px; }
+        .sr-status { font-weight: bold; padding: 2px 8px; border-radius: 4px; color: white; font-size: 11px; }
+        .bg-Pending { background: #f39c12; }
+        .bg-Washing { background: #2980b9; }
+        .bg-Completed { background: #27ae60; }
+        .bg-Delivered { background: #8e44ad; }
+
+        .btn-sm {
+            padding: 5px 12px; font-size: 12px; border-radius: 5px; border:none; 
+            cursor: pointer; background: #6A1B9A; color: white; text-decoration: none; display: inline-block;
+        }
+
+        /* CENTER MODAL */
+        .center-modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 3000;
+            display: none; justify-content: center; align-items: center;
+        }
+        .center-modal {
+            background: white; width: 85%; max-width: 320px;
+            padding: 25px; border-radius: 15px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            animation: popUp 0.3s ease-out;
+        }
+        @keyframes popUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        .cm-icon { font-size: 40px; color: #e74c3c; margin-bottom: 15px; }
+        .cm-title { font-size: 18px; font-weight: bold; margin-bottom: 10px; color: #333; }
+        .cm-msg { font-size: 14px; color: #666; margin-bottom: 20px; line-height: 1.5; }
+        .cm-btn {
+            background: #e74c3c; color: white; padding: 10px 20px;
+            border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%;
+        }
+
+        /* --- PRINT CSS (Bulletproof) --- */
+        #print-area-a4 { display: none; }
+
+        @media print {
+            @page { margin: 0; size: auto; }
+            body { 
+                margin: 0; padding: 0; background: white; color: black; 
+                -webkit-print-color-adjust: exact; 
+                print-color-adjust: exact; 
+            }
+            
+            /* Hide Everything Else */
+            .public-container, .no-print, .center-modal-overlay { display: none !important; }
+
+            /* Show Invoice */
+            body.printing-a4 #print-area-a4 {
+                display: block !important;
+                position: absolute; left: 0; top: 0; width: 100%;
+                width: 210mm; height: 100%;
+                padding: 10mm 15mm; margin: 0 auto;
+                background: white; z-index: 9999;
+            }
+
+            .layout-table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+            .layout-table td { vertical-align: top; padding: 5px; }
+            .print-logo { width: 160px !important; display: block; }
+            .inv-header { font-size: 30px; font-weight: 900; color: #333; text-align: right; }
+            .gray-text { color: #444; font-size: 13px; line-height: 1.5; margin-top: 10px; }
+            .info-box { background: #f9f9f9; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+            .lbl { font-size: 10px; font-weight: bold; color: #666; text-transform: uppercase; display: block; }
+            .val { font-size: 13px; font-weight: bold; color: #000; display: block; margin-top: 2px; }
+
+            .item-table { width: 100%; border-collapse: collapse; margin-top: 20px; border: 1px solid #ccc; }
+            .item-table th { background: #6A1B9A !important; color: white !important; padding: 8px 5px; font-size: 11px; text-align: left; -webkit-print-color-adjust: exact; }
+            .item-table td { border: 1px solid #ccc; padding: 8px 5px; font-size: 12px; }
+            .text-right { text-align: right; }
+
+            .total-table { width: 60%; float: right; margin-top: 10px; }
+            .total-row td { padding: 4px 0; font-size: 13px; }
+            .net-pay { font-size: 18px; font-weight: bold; color: #6A1B9A; border-top: 2px solid #333; padding-top: 10px; }
+            .footer-section { position: fixed; bottom: 10mm; left: 0; width: 100%; text-align: center; border-top: 1px solid #ccc; padding-top: 10px; }
+
+            .stamp {
+                position: absolute; top: 80px; left: 20px;
+                border: 4px solid; padding: 10px 30px;
+                font-size: 24px; font-weight: 900; text-transform: uppercase;
+                transform: rotate(-15deg); opacity: 0.6; z-index: 99;
+            }
+            .st-paid { color: #27ae60; border-color: #27ae60; }
+            .st-unpaid { color: #c0392b; border-color: #c0392b; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="public-container">
+        <div class="hero-section">
+            <img src="assets/logo.png" class="hero-logo">
+            <h1 class="hero-title">Purple Auto Spa</h1>
+            <p style="opacity:0.8; font-size:14px;">Shine & Protect</p>
+        </div>
+
+        <div class="p-tabs">
+            <div class="p-tab active" onclick="switchView('book')" id="tabBook">Book Now</div>
+            <div class="p-tab" onclick="switchView('track')" id="tabTrack">Check Status</div>
+        </div>
+
+        <div class="content-area">
+            <div id="viewBook">
+                <h3 style="color:#333; margin-bottom:20px; text-align:center;">Schedule Appointment</h3>
+                <div class="form-group"><label class="form-label">Select Date</label><input type="date" id="bkDate" class="form-control"></div>
+                <div class="form-group"><label class="form-label">Preferred Time</label><input type="time" id="bkTime" class="form-control"></div>
+                <div class="form-group"><label class="form-label">Your Name</label><input type="text" id="bkName" class="form-control" placeholder="Enter Full Name"></div>
+                <div class="form-group"><label class="form-label">Mobile Number</label><input type="number" id="bkMobile" class="form-control" placeholder="10 Digit Number" 
+       oninput="if(this.value.length > 10) this.value = this.value.slice(0, 10)">
+</div>
+                <div class="form-group"><label class="form-label">Vehicle Model (Optional)</label><input type="text" id="bkVeh" class="form-control" placeholder="e.g. SWIFT, CRETA" 
+       oninput="this.value = this.value.toUpperCase()">
+</div>
+                <button class="btn-main" onclick="submitBooking()" style="margin-top:10px;">Confirm Booking <i class="fas fa-check-circle"></i></button>
+            </div>
+
+            <div id="viewTrack" style="display:none;">
+                <h3 style="color:#333; margin-bottom:10px; text-align:center;">Track Vehicle</h3>
+                <p style="text-align:center; color:#777; font-size:13px; margin-bottom:20px;">Enter your registered mobile number.</p>
+                <div class="form-group"><input type="number" id="trackMobile" class="form-control" placeholder="Enter Mobile Number"></div>
+                <button class="btn-main" onclick="trackStatus()"><i class="fas fa-search"></i> Search</button>
+                <div id="trackResult"></div>
+            </div>
+
+            <div class="footer-info">
+                <p id="cAddr">Loading...</p><p id="cMobile">Loading...</p><p style="margin-top:10px;" id="cName">&copy; Purple Auto Spa</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="errorModal" class="center-modal-overlay">
+        <div class="center-modal">
+            <div class="cm-icon"><i class="fas fa-exclamation-circle"></i></div>
+            <div class="cm-title">Alert</div>
+            <div class="cm-msg" id="errorMsg">Something went wrong.</div>
+            <button class="cm-btn" onclick="closeErrorModal()">OK</button>
+        </div>
+    </div>
+
+    <div id="print-area-a4">
+        <table class="layout-table">
+            <tr>
+                <td style="width: 60%;">
+                    <img src="assets/logo.png" class="print-logo">
+                    <div class="gray-text" id="printCoDetails">Loading...</div>
+                </td>
+                <td style="width: 40%; text-align: right; vertical-align: top;">
+                    <div class="inv-header">INVOICE</div>
+                    <div style="font-size:14px; margin-top:5px; color:#333;"># <b id="printInvNo"></b></div>
+                    <div style="font-size:14px; color:#555;">Date: <span id="printDate"></span></div>
+                </td>
+            </tr>
+        </table>
+        <table class="layout-table" style="margin-top: 15px;">
+            <tr>
+                <td style="width: 50%;">
+                    <div class="info-box">
+                        <span class="lbl">Bill To</span>
+                        <span class="val" id="printClient">Client Name</span>
+                        <span style="font-size:12px;" id="printMobile">Mobile</span>
+                    </div>
+                </td>
+                <td style="width: 50%;">
+                    <div class="info-box">
+                        <span class="lbl">Vehicle Details</span>
+                        <span class="val" id="printVeh">Vehicle Name</span>
+                        <span style="font-size:12px;" id="printVehNo">Number</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
+        <table class="item-table" id="printItemTable"></table>
+        <div style="position:relative; margin-top: 10px;">
+            <table class="total-table" id="printTotalTable"></table>
+            <div id="printStamp" class="stamp" style="display:none;">UNPAID</div>
+            <div style="clear:both;"></div>
+        </div>
+        <div class="footer-section">
+            <div class="gray-text" style="font-size:10px; margin-bottom:5px;">Terms: Goods once sold will not be taken back. Subject to jurisdiction.</div>
+            <div style="font-weight:bold; color:#6A1B9A;" id="printFooterName">Purple Auto Spa</div>
+        </div>
+    </div>
+
+    <script src="assets/js/config.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script src="assets/js/api.js"></script>
+
+    <script>
+        let foundJobs = [];
+        let companyInfo = {};
+
+        window.onload = async function() {
+            const today = new Date().toISOString().split('T')[0];
+            const dInput = document.getElementById('bkDate');
+            dInput.value = today;
+            dInput.setAttribute('min', today);
+            loadCompanyDetails();
+        };
+
+        async function loadCompanyDetails() {
+            try {
+                const res = await apiRequest('getSettings');
+                if(res.status === 'success') {
+                    companyInfo = res.data;
+                    document.querySelector('.hero-title').innerText = companyInfo.name;
+                    document.getElementById('cName').innerHTML = `&copy; ${companyInfo.name}`;
+                    document.getElementById('cAddr').innerHTML = `<i class="fas fa-map-marker-alt"></i> ${companyInfo.address1}, ${companyInfo.address2}`;
+                    document.getElementById('cMobile').innerHTML = `<i class="fas fa-phone"></i> +91 ${companyInfo.mobile}`;
+                    
+                    document.getElementById('printFooterName').innerText = companyInfo.name;
+                    document.getElementById('printCoDetails').innerHTML = `${companyInfo.address1}<br>${companyInfo.address2}<br>Mobile: +91 ${companyInfo.mobile}`;
+                }
+            } catch(e) {}
+        }
+
+        function switchView(view) {
+            document.getElementById('viewBook').style.display = view === 'book' ? 'block' : 'none';
+            document.getElementById('viewTrack').style.display = view === 'track' ? 'block' : 'none';
+            document.getElementById('tabBook').className = view === 'book' ? 'p-tab active' : 'p-tab';
+            document.getElementById('tabTrack').className = view === 'track' ? 'p-tab active' : 'p-tab';
+        }
+
+        function validateTime(dateVal, timeVal) {
+            if (!timeVal) return "Please select time";
+            const [h, m] = timeVal.split(':').map(Number);
+            if (h < 9 || h >= 18) return "Shop is open from 9:00 AM to 6:00 PM only.";
+            
+            const selDate = new Date(dateVal);
+            const today = new Date();
+            today.setHours(0,0,0,0); selDate.setHours(0,0,0,0);
+            if (selDate.getTime() === today.getTime()) {
+                const nowH = new Date().getHours();
+                const nowM = new Date().getMinutes();
+                if (h < nowH || (h === nowH && m < nowM)) return "Cannot book for past time.";
+            }
+            return null;
+        }
+
+        function showModal(msg) {
+            document.getElementById('errorMsg').innerText = msg;
+            document.getElementById('errorModal').style.display = 'flex';
+        }
+        function closeErrorModal() {
+            document.getElementById('errorModal').style.display = 'none';
+        }
+
+        async function submitBooking() {
+            const date = document.getElementById('bkDate').value;
+            const time = document.getElementById('bkTime').value;
+            const name = document.getElementById('bkName').value;
+            const mobile = document.getElementById('bkMobile').value;
+            const veh = document.getElementById('bkVeh').value;
+
+            if(!date || !time || !name || !mobile) { showModal("Please fill all details"); return; }
+            const timeErr = validateTime(date, time);
+            if(timeErr) { showModal(timeErr); return; }
+
+            const btn = document.querySelector('.btn-main');
+            btn.innerHTML = 'Processing...'; btn.disabled = true;
+
+            const res = await apiRequest('createBooking', { date, time, client: name, mobile, vehicle: veh, vehicleNo: '' });
+
+            if(res.status === 'success') {
+                const bkId = res.bookingId;
+                const recUrl = `booking_receipt.html?id=${bkId}&client=${encodeURIComponent(name)}&veh=${encodeURIComponent(veh)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
+
+                document.getElementById('viewBook').innerHTML = `
+                    <div style="text-align:center; padding:30px;">
+                        <i class="fas fa-check-circle" style="font-size:50px; color:#27ae60;"></i>
+                        <h3 style="margin-top:15px;">Booking Confirmed!</h3>
+                        <p style="color:#777;">Thank you, ${name}.</p>
+                        <a href="${recUrl}" target="_blank" class="btn-main" style="background:#2ecc71; display:inline-block; margin-top:15px; text-decoration:none;"><i class="fas fa-download"></i> Download Receipt</a>
+                        <button class="btn-main" onclick="window.location.reload()" style="margin-top:10px; background:#666;">Book Another</button>
+                    </div>
+                `;
+            } else {
+                showModal("Booking Failed. Try again.");
+                btn.innerHTML = 'Confirm Booking <i class="fas fa-check-circle"></i>'; btn.disabled = false;
+            }
+        }
+
+        async function trackStatus() {
+            const mobile = document.getElementById('trackMobile').value;
+            if(!mobile) { showModal("Enter Mobile Number"); return; }
+            const container = document.getElementById('trackResult');
+            container.innerHTML = '<div style="text-align:center; margin-top:20px; color:#999;">Searching...</div>';
+
+            try {
+                const [jobRes, bkRes] = await Promise.all([apiRequest('getJobs'), apiRequest('getBookings')]);
+                container.innerHTML = ''; let found = false;
+                foundJobs = [];
+
+                if(jobRes.status === 'success') {
+                    const jobs = jobRes.active.concat(jobRes.history).filter(j => String(j.Mobile) === String(mobile));
+                    foundJobs = jobs; 
+                    jobs.forEach((job, index) => {
+                        found = true;
+                        container.innerHTML += `
+                            <div class="status-result">
+                                <div class="sr-row"><span style="font-weight:bold;">${job.VehicleName}</span><span class="sr-status bg-${job.Status}">${job.Status}</span></div>
+                                <div style="font-size:12px; color:#555;">${job.InvoiceNo} • ₹${job.NetPayable}</div>
+                                <div style="margin-top:10px; text-align:right;">
+                                    <button onclick="printLocalInvoice(${index})" class="btn-sm"><i class="fas fa-print"></i> Print Invoice</button>
+                                </div>
+                            </div>`;
+                    });
+                }
+
+                if(bkRes.status === 'success') {
+                    const bks = bkRes.data.filter(b => String(b[4]) === String(mobile) && b[7] === 'Open');
+                    bks.forEach(b => {
+                        found = true;
+                        const recLink = `booking_receipt.html?id=${b[0]}`;
+                        container.innerHTML += `
+                            <div class="status-result" style="border-left-color:#FF9800;">
+                                <div class="sr-row"><span style="font-weight:bold;">Appointment</span><span class="sr-status" style="background:#FF9800;">Scheduled</span></div>
+                                <div style="margin-top:5px; font-size:13px;">${formatDate(b[1])} @ ${formatTimeFix(b[2])}</div>
+                                <div style="font-size:12px; color:#777;">${b[5]}</div>
+                                <div style="margin-top:10px; text-align:right;">
+                                    <a href="${recLink}" target="_blank" class="btn-sm" style="background:#FF9800;"><i class="fas fa-ticket-alt"></i> Receipt</a>
+                                </div>
+                            </div>`;
+                    });
+                }
+                if(!found) container.innerHTML = '<div style="text-align:center; margin-top:20px; color:#777;">No records found.</div>';
+            } catch(e) { container.innerHTML = '<div style="text-align:center; color:red;">Connection Error</div>'; }
+        }
+
+       // --- PRINT FUNCTION (FIXED TIMING) ---
+                       // Note: Function ke aage 'async' lagana zaroori hai
+        async function printLocalInvoice(index) {
+            const job = foundJobs[index];
+            if(!job) return;
+
+            // --- STEP 1: SAFETY CHECK (Agar Data Missing Hai to Mangwao) ---
+            if (!companyInfo || !companyInfo.address1) {
+                // User ko batao ki wait kare
+                showToast("Fetching Company Details...", "info");
+                try {
+                    const res = await apiRequest('getSettings');
+                    if (res.status === 'success') {
+                        companyInfo = res.data;
+                    } else {
+                        showToast("Could not load Company Address", "error");
+                    }
+                } catch (e) {
+                    console.error("Fetch failed", e);
+                }
+            }
+
+            // --- STEP 2: AB DATA BHARO (Ab Data Pakka Hoga) ---
+            if(companyInfo.name) {
+                // Header Details
+                const addrBlock = document.getElementById('printCoDetails');
+                if(addrBlock) {
+                    addrBlock.innerHTML = `${companyInfo.address1 || ''}<br>${companyInfo.address2 || ''}<br><strong>Mobile: +91 ${companyInfo.mobile || ''}</strong>`;
+                }
+                
+                // Footer Name
+                const footerName = document.getElementById('printFooterName');
+                if(footerName) {
+                    footerName.innerText = companyInfo.name;
+                }
+            }
+
+            // --- STEP 3: INVOICE DATA ---
+            document.getElementById('printInvNo').innerText = job.InvoiceNo;
+            document.getElementById('printDate').innerText = formatDate(job.Date);
+            document.getElementById('printClient').innerText = job.ClientName;
+            document.getElementById('printMobile').innerText = job.Mobile;
+            document.getElementById('printVeh').innerText = job.VehicleName;
+            document.getElementById('printVehNo').innerText = job.VehicleNo;
+
+            const money = (amt) => "₹" + parseFloat(amt).toFixed(2);
+            let services = [];
+            try { services = typeof job.ServiceList === 'string' ? JSON.parse(job.ServiceList) : job.ServiceList; } catch(e){}
+
+            const isGST = job.GST_Mode === 'ON';
+            let tableHTML = isGST 
+                ? `<thead><tr><th style="width:5%">Sr</th><th style="width:35%">Service</th><th class="text-right">Base</th><th class="text-right">GST</th><th class="text-right">Total</th></tr></thead><tbody>`
+                : `<thead><tr><th style="width:10%">Sr</th><th style="width:60%">Service</th><th class="text-right">Price</th></tr></thead><tbody>`;
+
+            let totalBase = 0, totalGST = 0;
+            services.forEach((s, i) => {
+                const itemTotal = parseFloat(s.price);
+                if(isGST) {
+                    const basePrice = itemTotal / 1.18;
+                    const gstAmt = itemTotal - basePrice;
+                    totalBase += basePrice; totalGST += gstAmt;
+                    tableHTML += `<tr><td>${i+1}</td><td>${s.name}</td><td class="text-right">${money(basePrice)}</td><td class="text-right">${money(gstAmt)}</td><td class="text-right">${money(itemTotal)}</td></tr>`;
+                } else {
+                    totalBase += itemTotal;
+                    tableHTML += `<tr><td>${i+1}</td><td>${s.name}</td><td class="text-right">${money(itemTotal)}</td></tr>`;
+                }
+            });
+            tableHTML += `</tbody>`;
+            document.getElementById('printItemTable').innerHTML = tableHTML;
+
+            let subTotal = isGST ? (totalBase + totalGST) : totalBase;
+            let totalsHTML = '';
+            if(isGST) {
+                totalsHTML += `<tr class="total-row"><td>Total Base:</td><td class="text-right">${money(totalBase)}</td></tr>`;
+                totalsHTML += `<tr class="total-row"><td>Total GST:</td><td class="text-right">${money(totalGST)}</td></tr>`;
+            }
+            totalsHTML += `<tr class="total-row"><td>Subtotal:</td><td class="text-right">${money(subTotal)}</td></tr>`;
+            totalsHTML += `<tr class="total-row"><td>Discount:</td><td class="text-right" style="color:red;">- ${money(job.Discount || 0)}</td></tr>`;
+            totalsHTML += `<tr class="total-row"><td class="net-pay">NET PAYABLE:</td><td class="net-pay text-right">${money(job.NetPayable)}</td></tr>`;
+            document.getElementById('printTotalTable').innerHTML = totalsHTML;
+
+            const stamp = document.getElementById('printStamp');
+            stamp.style.display = 'block';
+            stamp.innerText = job.PaymentStatus === 'Paid' ? "PAID" : "UNPAID";
+            stamp.className = job.PaymentStatus === 'Paid' ? "stamp st-paid" : "stamp st-unpaid";
+
+            // --- STEP 4: PRINT WITH DELAY ---
+            document.body.classList.add('printing-a4');
+            
+            // Thoda lamba delay (500ms) taaki data render ho jaye
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => {
+                    document.body.classList.remove('printing-a4');
+                }, 500);
+            }, 500); 
+        }
+
+
+
+        function formatTimeFix(val) {
+            if(!val) return '';
+            const s = String(val);
+            const match = s.match(/(\d{1,2}):(\d{2})/);
+            if(match) {
+                let h = parseInt(match[1]);
+                let m = match[2];
+                let ampm = h >= 12 ? 'PM' : 'AM';
+                h = h % 12; h = h ? h : 12;
+                return `${h}:${m} ${ampm}`;
+            }
+            return s; 
+        }
+
+        window.onload = async function() {
+            // --- DATE LOCK LOGIC ---
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${yyyy}-${mm}-${dd}`;
+
+            const dInput = document.getElementById('bkDate');
+            if(dInput) {
+                dInput.value = todayStr;       // Aaj ki date select karo
+                dInput.setAttribute('min', todayStr); // Kal ki date disable karo
+            }
+            // -----------------------
+
+            loadCompanyDetails();
+        };
+
+        function validateTime(dateVal, timeVal) {
+            if (!timeVal) return "Please select time";
+            
+            const selDate = new Date(dateVal);
+            const today = new Date();
+            
+            // Time hata kar sirf Date compare karo
+            today.setHours(0,0,0,0); 
+            selDate.setHours(0,0,0,0);
+            
+            // --- NEW: PAST DATE CHECK ---
+            if (selDate < today) {
+                return "Cannot book for a past date.";
+            }
+
+            const [h, m] = timeVal.split(':').map(Number);
+            
+            // Rule: Shop Timings (9 to 6)
+            if (h < 9 || h >= 18) return "Shop is open from 9:00 AM to 6:00 PM only.";
+            
+            // Rule: Past Time (Agar aaj ki date hai)
+            if (selDate.getTime() === today.getTime()) {
+                const nowH = new Date().getHours();
+                const nowM = new Date().getMinutes();
+                // Agar chuna hua time beet chuka hai
+                if (h < nowH || (h === nowH && m < nowM)) return "Cannot book for past time.";
+            }
+            return null;
+        }
+
+    // --- SMART VEHICLE NUMBER FORMATTER ---
+    function formatVehicleNo(input) {
+        // 1. Sab bada karo aur faaltu chize hatao
+        let val = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        let formatted = '';
+
+        if (val.length > 0) {
+            formatted = val.substring(0, 2); // State: GJ
+        }
+        if (val.length > 2) {
+            formatted += ' ' + val.substring(2, 4); // District: 08
+        }
+        if (val.length > 4) {
+            // Series aur Number Logic
+            let remaining = val.substring(4);
+            if (remaining.length > 4) {
+                 // Agar 4 se zyada bache hain, to last 4 number alag karo
+                 let series = remaining.substring(0, remaining.length - 4);
+                 let number = remaining.substring(remaining.length - 4);
+                 formatted += ' ' + series + ' ' + number;
+            } else {
+                 formatted += ' ' + remaining;
+            }
+        }
+        input.value = formatted;
+    }
+
+
+
+    </script>
+</body>
+</html>
